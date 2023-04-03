@@ -45,6 +45,7 @@ class ParseCache {
     generateCacheKey(query, ...args) {
         const key = {
             className: query.className,
+            query: query.toJSON(),
             args: args,
         }
         return objectHash(JSON.stringify(key));
