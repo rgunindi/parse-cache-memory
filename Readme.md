@@ -45,8 +45,6 @@ const cache = new ParseCache(customOptions);
 
 > If you want you can use the cache methods manually, but this is not recommended because parse-cache-memory will do it for you automatically.
 
-Then, use the cache instance to get and set cached query results:
-
 ```js
 // Example Parse query
 const query = new Parse.Query('GameScore');
