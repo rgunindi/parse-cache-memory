@@ -18,7 +18,7 @@ npm install parse-cache-memory
 ## Simple Usage
 
 ```js
-require("parse-cache-memory");
+require('parse-cache-memory').parseCacheInit();
 const query = new Parse.Query("GameScore");
 query.equalTo("playerName", "Dan Stemkoski");
 const data = await query.findCache();
@@ -38,9 +38,9 @@ const customOptions = {
   allowStale: true, // determines whether items can be used after their ttl has expired
   updateAgeOnGet: true, // determines whether an item's age is updated when it's retrieved using "get"
   updateAgeOnHas: true, // determines whether an item's age is updated when it's checked using "has"
+  resetCacheOnSaveAndDestroy: false, // determines whether the cache is reset when an object is saved or destroyed
 };
-const ParseCache = require("parse-cache-memory");
-const cache = new ParseCache(customOptions);
+const ParseCache = require('parse-cache-memory').parseCacheInit(customOptions);
 ```
 
 > If you want you can use the cache methods manually, but this is not recommended because parse-cache-memory will do it for you automatically.
@@ -64,9 +64,15 @@ const first = await query.firstCache();
 
 ## Some backside features
 
-- Updating Cache with hooks
+### Updating Cache with Hooks
 
-> By using the save, saveAll, destroy, and destroyAll functions, we can ensure that the cache of a collection utilizing the following functions are constantly updated. This allows for the most recent data to be available in the cache at all times.
+By using the `save`, `saveAll`, `destroy`, and `destroyAll` functions, we can ensure that the cache of a collection utilizing the following functions are constantly updated. This allows for the most recent data to be available in the cache at all times.
+
+By default, the cache will not be reset on `save` and `destroy` operations (`resetCacheOnSaveAndDestroy` is set to `false`). However, if you want to activate the `save` and `destroy` hooks to reset the cache automatically, you can pass the option `{resetCacheOnSaveAndDestroy: true}` to the ParseCache constructor to enable the hooks.
+
+- Note: Keep in mind that enabling the hooks to reset the cache after every save and destroy operation might have an impact on performance. Carefully consider your application's requirements and caching strategy when deciding whether to enable this option.
+
+### Using the Cache with Parse Functions
 
 You can also use the ready-made functions `findCache()`, `getCache()`, `countCache()`, `distinctCache()`, `aggregateCache()`, `firstCache()`, `eachBatchCache()`, `eachCache()`, `mapCache()`, `reduceCache()`, `filterCache()`, and `subscribeCache()`. As the names suggest, they behave like their respective functions, but execute the queries through the cache to ensure that the cached data is always up to date.
 
