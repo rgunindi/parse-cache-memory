@@ -15,7 +15,7 @@
   "author": "Ramazan GUNINDI",
   "license": "ISC",
   "dependencies": {
-    "lru-cache": "^8.0.4",
+    "lru-cache": "^8.0.5",
     "object-hash": "^3.0.0",
     "parse": "^4.0.1"
   },
