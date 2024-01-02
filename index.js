@@ -20,9 +20,8 @@ class ParseCache {
         this.cache = new Map();
     }
 
-    async get(query, ...args) {
+    async get(query, cacheKey) {
         const className = query.className;
-        const cacheKey = this.generateCacheKey(query, ...args);
 
         if (!this.cache.has(className)) {
             this.cache.set(className, new LRUCache(options));
@@ -53,6 +52,23 @@ class ParseCache {
     }
 
 }
+
+const fNames = {
+    getCache: "get",
+    findCache: "find",
+    findAllCache: "findAll",
+    countCache: "count",
+    distinctCache: "distinct",
+    aggregateCache: "aggregate",
+    firstCache: "first",
+    eachBatchCache: "eachBatch",
+    eachCache: "each",
+    mapCache: "map",
+    reduceCache: "reduce",
+    filterCache: "filter",
+    subscribeCache: "subscribe"
+}
+
 function parseCacheInit(options = {}) {
     const cache = new ParseCache(options);
     const originalSave = Parse.Object.prototype.save;
@@ -93,8 +109,8 @@ function parseCacheInit(options = {}) {
 
     //("get", "find", "findAll", "count", "distinct", "aggregate", "first", "eachBatch", "each", "map", "reduce", "filter", "subscribe")
     global.Parse.Query.prototype.getCache = async function (objectId, options) {
-        const cacheKey = cache.generateCacheKey(this, objectId, options);
-        let cachedData = await cache.get(this, objectId, options);
+        const cacheKey = cache.generateCacheKey(this, objectId, options, fNames.getCache);
+        let cachedData = await cache.get(this, cacheKey);
 
         if (!cachedData) {
             cachedData = await this.get(objectId, options);
@@ -105,8 +121,8 @@ function parseCacheInit(options = {}) {
         return cachedData;
     };
     global.Parse.Query.prototype.findCache = async function (options) {
-        const cacheKey = cache.generateCacheKey(this, options);
-        let cachedData = await cache.get(this, options);
+        const cacheKey = cache.generateCacheKey(this, options, fNames.findCache);
+        let cachedData = await cache.get(this, cacheKey);
 
         if (!cachedData) {
             cachedData = await this.find(options);
@@ -117,8 +133,8 @@ function parseCacheInit(options = {}) {
         return cachedData;
     };
     global.Parse.Query.prototype.findAllCache = async function (options) {
-        const cacheKey = cache.generateCacheKey(this, options);
-        let cachedData = await cache.get(this, options);
+        const cacheKey = cache.generateCacheKey(this, options, fNames.findAllCache);
+        let cachedData = await cache.get(this, cacheKey);
 
         if (!cachedData) {
             cachedData = await this.findAll(options);
@@ -129,8 +145,8 @@ function parseCacheInit(options = {}) {
         return cachedData;
     };
     global.Parse.Query.prototype.countCache = async function (options) {
-        const cacheKey = cache.generateCacheKey(this, options);
-        let cachedData = await cache.get(this, options);
+        const cacheKey = cache.generateCacheKey(this, options,fNames.countCache);
+        let cachedData = await cache.get(this,cacheKey);
 
         if (!cachedData) {
             cachedData = await this.count(options);
@@ -141,8 +157,8 @@ function parseCacheInit(options = {}) {
         return cachedData;
     };
     global.Parse.Query.prototype.distinctCache = async function (key, options) {
-        const cacheKey = cache.generateCacheKey(this, key, options);
-        let cachedData = await cache.get(this, key, options);
+        const cacheKey = cache.generateCacheKey(this, key, options, fNames.distinctCache);
+        let cachedData = await cache.get(this,cacheKey);
 
         if (!cachedData) {
             cachedData = await this.distinct(key, options);
@@ -153,8 +169,8 @@ function parseCacheInit(options = {}) {
         return cachedData;
     };
     global.Parse.Query.prototype.aggregateCache = async function (pipeline, options) {
-        const cacheKey = cache.generateCacheKey(this, pipeline, options);
-        let cachedData = await cache.get(this, pipeline, options);
+        const cacheKey = cache.generateCacheKey(this, pipeline, options, fNames.aggregateCache);
+        let cachedData = await cache.get(this,cacheKey);
 
         if (!cachedData) {
             cachedData = await this.aggregate(pipeline, options);
@@ -165,8 +181,8 @@ function parseCacheInit(options = {}) {
         return cachedData;
     };
     global.Parse.Query.prototype.firstCache = async function (options) {
-        const cacheKey = cache.generateCacheKey(this, options);
-        let cachedData = await cache.get(this, options);
+        const cacheKey = cache.generateCacheKey(this, options, fNames.firstCache);
+        let cachedData = await cache.get(this,cacheKey);
 
         if (!cachedData) {
             cachedData = await this.first(options);
@@ -177,8 +193,8 @@ function parseCacheInit(options = {}) {
         return cachedData;
     };
     global.Parse.Query.prototype.eachBatchCache = async function (callback, options) {
-        const cacheKey = cache.generateCacheKey(this, callback, options);
-        let cachedData = await cache.get(this, callback, options);
+        const cacheKey = cache.generateCacheKey(this, callback, options, fNames.eachBatchCache);
+        let cachedData = await cache.get(this,cacheKey);
 
         if (!cachedData) {
             cachedData = await this.eachBatch(callback, options);
@@ -189,8 +205,8 @@ function parseCacheInit(options = {}) {
         return cachedData;
     };
     global.Parse.Query.prototype.eachCache = async function (callback, options) {
-        const cacheKey = cache.generateCacheKey(this, callback, options);
-        let cachedData = await cache.get(this, callback, options);
+        const cacheKey = cache.generateCacheKey(this, callback, options, fNames.eachCache);
+        let cachedData = await cache.get(this, cacheKey);
 
         if (!cachedData) {
             cachedData = await this.each(callback, options);
@@ -201,8 +217,8 @@ function parseCacheInit(options = {}) {
         return cachedData;
     };
     global.Parse.Query.prototype.mapCache = async function (callback, options) {
-        const cacheKey = cache.generateCacheKey(this, callback, options);
-        let cachedData = await cache.get(this, callback, options);
+        const cacheKey = cache.generateCacheKey(this, callback, options, fNames.mapCache);
+        let cachedData = await cache.get(this,cacheKey);
 
         if (!cachedData) {
             cachedData = await this.map(callback, options);
@@ -213,8 +229,8 @@ function parseCacheInit(options = {}) {
         return cachedData;
     };
     global.Parse.Query.prototype.reduceCache = async function (callback, initialValue, options) {
-        const cacheKey = cache.generateCacheKey(this, callback, initialValue, options);
-        let cachedData = await cache.get(this, callback, initialValue, options);
+        const cacheKey = cache.generateCacheKey(this, callback, initialValue, options, fNames.reduceCache);
+        let cachedData = await cache.get(this, cacheKey);
 
         if (!cachedData) {
             cachedData = await this.reduce(callback, initialValue, options);
@@ -225,8 +241,8 @@ function parseCacheInit(options = {}) {
         return cachedData;
     };
     global.Parse.Query.prototype.filterCache = async function (callback, options) {
-        const cacheKey = cache.generateCacheKey(this, callback, options);
-        let cachedData = await cache.get(this, callback, options);
+        const cacheKey = cache.generateCacheKey(this, callback, options, fNames.filterCache);
+        let cachedData = await cache.get(this, cacheKey);
 
         if (!cachedData) {
             cachedData = await this.filter(callback, options);
@@ -237,8 +253,8 @@ function parseCacheInit(options = {}) {
         return cachedData;
     };
     global.Parse.Query.prototype.subscribeCache = async function (options) {
-        const cacheKey = cache.generateCacheKey(this, options);
-        let cachedData = await cache.get(this, options);
+        const cacheKey = cache.generateCacheKey(this, options, fNames.subscribeCache);
+        let cachedData = await cache.get(this, cacheKey);
 
         if (!cachedData) {
             cachedData = await this.subscribe(options);
