@@ -1,0 +1,95 @@
+repo_name: rgunindi/parse-cache-memory
+report_id: 831acb6e808db9261106380cc35476c5
+version: 0.1
+repo_type: Public
+timestamp: '2024-02-29T19:57:40+00:00'
+requested_by: rgunindi
+provider: github
+branch: main
+detected_tools_count: 7
+tools:
+- name: JavaScript
+  description: Lightweight, interpreted, object-oriented language with first-class
+    functions
+  website_url: https://developer.mozilla.org/en-US/docs/Web/JavaScript
+  open_source: true
+  hosted_saas: false
+  category: Languages & Frameworks
+  sub_category: Languages
+  image_url: https://img.stackshare.io/service/1209/javascript.jpeg
+  detection_source_url: https://github.com/rgunindi/parse-cache-memory
+  detection_source: Repo Metadata
+- name: Git
+  description: Fast, scalable, distributed revision control system
+  website_url: http://git-scm.com/
+  open_source: true
+  hosted_saas: false
+  category: Build, Test, Deploy
+  sub_category: Version Control System
+  image_url: https://img.stackshare.io/service/1046/git.png
+  detection_source_url: https://github.com/rgunindi/parse-cache-memory
+  detection_source: Repo Metadata
+- name: GitHub Actions
+  description: Automate your workflow from idea to production
+  website_url: https://github.com/features/actions
+  open_source: false
+  hosted_saas: true
+  category: Build, Test, Deploy
+  sub_category: Continuous Integration
+  image_url: https://img.stackshare.io/service/11563/actions.png
+  detection_source_url: https://github.com/rgunindi/parse-cache-memory/blob/main/.github/workflows/release.yml
+  detection_source: ".github/workflows/release.yml"
+  last_updated_by: xcod3r
+  last_updated_on: 2023-04-03 07:46:49.000000000 Z
+- name: npm
+  description: The package manager for JavaScript.
+  website_url: https://www.npmjs.com/
+  open_source: false
+  hosted_saas: false
+  category: Build, Test, Deploy
+  sub_category: Front End Package Manager
+  image_url: https://img.stackshare.io/service/1120/lejvzrnlpb308aftn31u.png
+  detection_source_url: https://github.com/rgunindi/parse-cache-memory/blob/main/package.json
+  detection_source: package.json
+  last_updated_by: xcod3r
+  last_updated_on: 2023-04-15 15:35:30.000000000 Z
+- name: Parse
+  description: The complete mobile app platform
+  website_url: https://parse.com
+  open_source: false
+  hosted_saas: true
+  category: Application Hosting
+  sub_category: Mobile Backend
+  image_url: https://img.stackshare.io/service/86/68wTsXcT.png
+  detection_source_url: https://github.com/rgunindi/parse-cache-memory/blob/main/package.json
+  detection_source: package.json
+  last_updated_by: snyk-bot
+  last_updated_on: 2023-05-24 04:27:51.000000000 Z
+- name: lru-cache
+  description: A cache object that deletes the least-recently-used items
+  package_url: https://www.npmjs.com/lru-cache
+  version: 8.0.5
+  license: ISC
+  open_source: true
+  hosted_saas: false
+  category: Libraries
+  sub_category: npm Packages
+  image_url: https://img.stackshare.io/package/16386/default_4cc3f31b8c64a6268fc123f0965a09d1b11180af.png
+  detection_source_url: https://github.com/rgunindi/parse-cache-memory/blob/main/package-lock.json
+  detection_source: package.json
+  last_updated_by: snyk-bot
+  last_updated_on: 2023-05-11 17:46:14.000000000 Z
+- name: object-hash
+  description: Generate hashes from javascript objects in node and the browser
+  package_url: https://www.npmjs.com/object-hash
+  version: 3.0.0
+  license: MIT
+  open_source: true
+  hosted_saas: false
+  category: Libraries
+  sub_category: npm Packages
+  image_url: https://img.stackshare.io/package/16940/default_ebf16e0c8af5e95030933d9e01479224b6665289.png
+  detection_source_url: https://github.com/rgunindi/parse-cache-memory/blob/main/package-lock.json
+  detection_source: package.json
+  last_updated_by: xcod3r
+  last_updated_on: 2023-04-15 15:54:47.000000000 Z
