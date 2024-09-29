@@ -3,7 +3,6 @@
 [![Known Vulnerabilities](https://snyk.io/test/github/rgunindi/parse-cache-memory/badge.svg)](https://snyk.io/test/github/rgunindi/parse-cache-memory)
 [![npm version](https://badge.fury.io/js/parse-cache-memory.svg)](https://badge.fury.io/js/parse-cache-memory)
 [![GitHub license](https://img.shields.io/github/license/rgunindi/parse-cache-memory)]()
-[![Node.js Package](https://github.com/rgunindi/parse-cache-memory/actions/workflows/release.yml/badge.svg)](https://github.com/rgunindi/parse-cache-memory/actions/workflows/release.yml)
 
 A caching utility for Parse Server queries.
 
@@ -46,10 +45,6 @@ const ParseCache = require('parse-cache-memory').parseCacheInit(customOptions);
 > If you want you can use the cache methods manually, but this is not recommended because parse-cache-memory will do it for you automatically.
 
 ```js
-// Example Parse query
-const query = new Parse.Query('GameScore');
-query.equalTo('playerName', 'Dan Stemkoski');
-
 // Example Parse query
 const query = new Parse.Query('GameScore');
 query.equalTo('playerName', 'Dan Stemkoski');
