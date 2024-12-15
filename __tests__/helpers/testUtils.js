@@ -1,4 +1,5 @@
 const net = require('net');
+const { MongoMemoryServer } = require('mongodb-memory-server');
 
 function getAvailablePort() {
     return new Promise((resolve, reject) => {
@@ -14,4 +15,19 @@ function getAvailablePort() {
     });
 }
 
-module.exports = { getAvailablePort }; 
+async function createMongoServer() {
+    try {
+        return await MongoMemoryServer.create();
+    } catch (error) {
+        console.error('MongoDB Memory Server creation failed:', error);
+        // Fallback to local MongoDB for CI
+        return {
+            getUri: () => process.env.MONGODB_URI || 'mongodb://localhost:27017/test'
+        };
+    }
+}
+
+module.exports = { 
+    getAvailablePort,
+    createMongoServer
+}; 

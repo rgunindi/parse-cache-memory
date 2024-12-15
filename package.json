@@ -4,7 +4,7 @@
   "description": "In-memory cache implementation for Parse Server",
   "main": "index.js",
   "scripts": {
-    "test": "jest --testTimeout=30000 --runInBand --forceExit",
+    "test": "cross-env PARSE_MASTER_KEY=test-master-key PARSE_APP_ID=test-app-id jest --testTimeout=30000 --runInBand --forceExit",
     "test:unit": "jest --testTimeout=30000 --runInBand --forceExit __tests__/unit/parse-cache-memory.test.js",
     "test:integration": "jest --testTimeout=30000 --runInBand --forceExit __tests__/integration/cache-integration.test.js",
     "test:watch": "jest --watch --testTimeout=30000 --runInBand",
@@ -40,7 +40,8 @@
     "prettier": "^3.2.5",
     "express": "^4.17.1",
     "parse-server": "^5.2.0",
-    "mongodb-memory-server": "^8.10.0"
+    "mongodb-memory-server": "^8.10.0",
+    "cross-env": "^7.0.3"
   },
   "lint-staged": {
     "*.js": "eslint --cache --fix",

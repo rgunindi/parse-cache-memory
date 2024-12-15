@@ -5,6 +5,22 @@ const Parse = require('parse/node');
 const express = require('express');
 const { getAvailablePort } = require('../helpers/testUtils');
 
+// Add expected methods list at the top of the file
+const expectedMethods = [
+    'findCache',
+    'getCache',
+    'countCache',
+    'distinctCache',
+    'aggregateCache',
+    'firstCache',
+    'eachBatchCache',
+    'eachCache',
+    'mapCache',
+    'reduceCache',
+    'filterCache',
+    'subscribeCache'
+];
+
 describe('Parse Cache Memory Unit Tests', () => {
     let cache;
     let parseServer;
@@ -18,6 +34,9 @@ describe('Parse Cache Memory Unit Tests', () => {
             mongod = await MongoMemoryServer.create();
             const mongoUri = mongod.getUri();
 
+            const masterKey = process.env.PARSE_MASTER_KEY || 'test-master-key';
+            const appId = process.env.PARSE_APP_ID || 'test-app-id';
+
             // Setup Express
             app = express();
             
@@ -26,8 +45,8 @@ describe('Parse Cache Memory Unit Tests', () => {
             // Create Parse Server instance
             parseServer = new ParseServer({
                 databaseURI: mongoUri,
-                appId: 'test-app-id',
-                masterKey: 'test-master-key',
+                appId: appId,
+                masterKey: masterKey,
                 serverURL: `http://localhost:${port}/parse`,
                 javascriptKey: 'test-js-key',
                 allowClientClassCreation: true,
@@ -48,23 +67,28 @@ describe('Parse Cache Memory Unit Tests', () => {
                 }
             });
 
-            // Initialize Parse SDK
-            global.Parse = Parse; // Make sure Parse is global
-            Parse.initialize('test-app-id', 'test-js-key', 'test-master-key');
+            // Initialize Parse SDK with master key
+            global.Parse = Parse;  // Make Parse global
+            Parse.initialize(appId, 'test-js-key', masterKey);
             Parse.serverURL = `http://localhost:${port}/parse`;
 
-            // Initialize cache after Parse is set up
+            // Initialize cache and ensure it's added to global Parse
             cache = parseCacheInit({
                 max: 500,
                 ttl: 60 * 1000,
                 resetCacheOnSaveAndDestroy: true
             });
 
+            // Wait a bit for cache methods to be initialized
+            await new Promise(resolve => setTimeout(resolve, 100));
+
             // Verify cache methods are available
             const cacheMethods = Object.keys(Parse.Query.prototype).filter(key => key.includes('Cache'));
             console.log('Available cache methods:', cacheMethods);
             
             if (!cacheMethods.includes('findCache')) {
+                console.error('Cache methods missing from Parse.Query.prototype:', 
+                    expectedMethods.filter(m => !cacheMethods.includes(m)));
                 throw new Error('Cache methods not properly initialized');
             }
 
@@ -75,9 +99,6 @@ describe('Parse Cache Memory Unit Tests', () => {
             } catch (error) {
                 console.log('Schema might already exist:', error.message);
             }
-
-            // Add a verification log
-            console.log('Cache methods:', Object.keys(Parse.Query.prototype).filter(key => key.includes('Cache')));
         } catch (error) {
             console.error('Setup failed:', error);
             throw error;
