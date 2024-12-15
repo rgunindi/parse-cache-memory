@@ -30,6 +30,7 @@ jobs:
         run: |
           npm install
           npm install cross-env@7.0.3 --save-dev
+          npm install eslint@8.57.1 eslint-config-prettier@9.1.0 eslint-plugin-jest@27.9.0 --save-dev
           
       - name: Run linter
         run: npm run lint

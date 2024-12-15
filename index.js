@@ -2,7 +2,7 @@ const Parse = require('parse/node');
 const LRUCache = require('lru-cache');
 const objectHash = require('object-hash');
 
-let options = {}
+let options = {};
 class ParseCache {
     constructor(option = {}) {
         options = {
@@ -13,7 +13,12 @@ class ParseCache {
             updateAgeOnGet: option.updateAgeOnGet || false,
             updateAgeOnHas: option.updateAgeOnHas || false,
             sizeCalculation: (value, key) => {
-                return 1
+                if (Array.isArray(value)) {
+                    return value.length;
+                } else if (typeof value === 'object') {
+                    return JSON.stringify(value).length;
+                }
+                return 1;
             },
             resetCacheOnSaveAndDestroy: option.resetCacheOnSaveAndDestroy || false,
             maxClassCaches: option.maxClassCaches || 50,
@@ -75,7 +80,7 @@ class ParseCache {
             className: query.className,
             query: query.toJSON(),
             args: args,
-        }
+        };
         return objectHash(JSON.stringify(key));
     }
 
@@ -102,7 +107,7 @@ const fNames = {
     reduceCache: "reduce",
     filterCache: "filter",
     subscribeCache: "subscribe"
-}
+};
 
 function parseCacheInit(options = {}) {
     const cache = new ParseCache(options);
@@ -118,7 +123,7 @@ function parseCacheInit(options = {}) {
                 cache.clear(result[0].className);
                 return result;
             }
-        }
+        };
         global.Parse.Object.prototype.destroy = async function (...args) {
             const result = await originalDestroy.apply(this, args);
             // Clear cache
@@ -132,7 +137,7 @@ function parseCacheInit(options = {}) {
                 cache.clear(result[0].className);
                 return result;
             }
-        }
+        };
         global.Parse.Object.prototype.save = async function (...args) {
             // const result = await originalSave.apply(this, args);
             const result = await originalSave.call(this, ...args);
@@ -305,4 +310,4 @@ function parseCacheInit(options = {}) {
 }
 
 
-module.exports = { parseCacheInit }
+module.exports = { parseCacheInit };
