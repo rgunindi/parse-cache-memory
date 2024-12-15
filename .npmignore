@@ -2,3 +2,27 @@ node_modules/
 npm-debug.log*
 .DS_Store
 *.log
+
+# Tests
+__tests__/
+coverage/
+
+# Development files
+.gitignore
+.npmignore
+jest.config.js
+
+# Documentation
+docs/
+examples/
+
+# IDE
+.idea/
+.vscode/
+
+# Git
+.git/
+.github/
+
+techstack.md
+techstack.yml

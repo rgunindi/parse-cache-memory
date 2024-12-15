@@ -1,10 +1,16 @@
 {
   "name": "parse-cache-memory",
   "version": "2.1.0",
-  "description": "",
+  "description": "In-memory cache implementation for Parse Server",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "jest --testTimeout=30000 --runInBand --forceExit",
+    "test:unit": "jest --testTimeout=30000 --runInBand --forceExit __tests__/unit/parse-cache-memory.test.js",
+    "test:integration": "jest --testTimeout=30000 --runInBand --forceExit __tests__/integration/cache-integration.test.js",
+    "test:watch": "jest --watch --testTimeout=30000 --runInBand",
+    "test:coverage": "jest --coverage --testTimeout=30000 --runInBand --forceExit",
+    "lint": "eslint .",
+    "format": "prettier --write \"**/*.{js,json,md}\""
   },
   "keywords": [
     "parse",
@@ -22,5 +28,22 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/rgunindi/parse-cache-memory.git"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.12",
+    "eslint": "^8.57.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-jest": "^27.9.0",
+    "husky": "^9.0.11",
+    "jest": "^29.7.0",
+    "lint-staged": "^15.2.2",
+    "prettier": "^3.2.5",
+    "express": "^4.17.1",
+    "parse-server": "^5.2.0",
+    "mongodb-memory-server": "^8.10.0"
+  },
+  "lint-staged": {
+    "*.js": "eslint --cache --fix",
+    "*.{js,json,md}": "prettier --write"
   }
 }
