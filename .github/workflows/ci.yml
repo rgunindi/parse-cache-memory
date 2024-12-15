@@ -26,6 +26,11 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libssl3
           
+      - name: Configure MongoDB Memory Server
+        run: |
+          echo "MONGOMS_VERSION=4.0.3" >> $GITHUB_ENV
+          echo "MONGOMS_DOWNLOAD_URL=https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1804-4.0.3.tgz" >> $GITHUB_ENV
+          
       - name: Install dependencies
         run: |
           npm install

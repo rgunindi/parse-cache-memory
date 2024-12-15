@@ -17,12 +17,16 @@ function getAvailablePort() {
 
 async function createMongoServer() {
     try {
-        return await MongoMemoryServer.create();
+        return await MongoMemoryServer.create({
+            binary: {
+                version: '4.0.3'
+            }
+        });
     } catch (error) {
         console.error('MongoDB Memory Server creation failed:', error);
-        // Fallback to local MongoDB for CI
+        // Fallback to local MongoDB
         return {
-            getUri: () => process.env.MONGODB_URI || 'mongodb://localhost:27017/test'
+            getUri: () => 'mongodb://localhost:27017/test'
         };
     }
 }

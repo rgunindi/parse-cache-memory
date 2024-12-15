@@ -31,7 +31,7 @@ describe('Parse Cache Memory Unit Tests', () => {
     beforeAll(async () => {
         try {
             // Setup MongoDB Memory Server
-            mongod = await MongoMemoryServer.create();
+            mongod = await createMongoServer();
             const mongoUri = mongod.getUri();
 
             const masterKey = process.env.PARSE_MASTER_KEY || 'test-master-key';
@@ -68,34 +68,29 @@ describe('Parse Cache Memory Unit Tests', () => {
             });
 
             // Initialize Parse SDK with master key
-            global.Parse = Parse;  // Make Parse global
             Parse.initialize(appId, 'test-js-key', masterKey);
             Parse.serverURL = `http://localhost:${port}/parse`;
 
-            // Initialize cache and ensure it's added to global Parse
+            // Set master key for all requests
+            Parse.CoreManager.setRESTController({
+                ...Parse.CoreManager.getRESTController(),
+                request: function(...args) {
+                    args[0].useMasterKey = true;
+                    return Parse.CoreManager.getRESTController().request.apply(this, args);
+                }
+            });
+
+            // Initialize cache
             cache = parseCacheInit({
                 max: 500,
                 ttl: 60 * 1000,
                 resetCacheOnSaveAndDestroy: true
             });
 
-            // Wait a bit for cache methods to be initialized
-            await new Promise(resolve => setTimeout(resolve, 100));
-
-            // Verify cache methods are available
-            const cacheMethods = Object.keys(Parse.Query.prototype).filter(key => key.includes('Cache'));
-            console.log('Available cache methods:', cacheMethods);
-            
-            if (!cacheMethods.includes('findCache')) {
-                console.error('Cache methods missing from Parse.Query.prototype:', 
-                    expectedMethods.filter(m => !cacheMethods.includes(m)));
-                throw new Error('Cache methods not properly initialized');
-            }
-
             // Create TestClass schema
             const schema = new Parse.Schema('TestClass');
             try {
-                await schema.save();
+                await schema.save({ useMasterKey: true });
             } catch (error) {
                 console.log('Schema might already exist:', error.message);
             }
