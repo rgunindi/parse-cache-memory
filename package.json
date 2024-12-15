@@ -1,6 +1,6 @@
 {
   "name": "parse-cache-memory",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -17,7 +17,7 @@
   "dependencies": {
     "lru-cache": "^8.0.5",
     "object-hash": "^3.0.0",
-    "parse": "^4.1.0"
+    "parse": "^5.2.0"
   },
   "repository": {
     "type": "git",

@@ -15,25 +15,53 @@ class ParseCache {
             sizeCalculation: (value, key) => {
                 return 1
             },
-            resetCacheOnSaveAndDestroy: option.resetCacheOnSaveAndDestroy || false
+            resetCacheOnSaveAndDestroy: option.resetCacheOnSaveAndDestroy || false,
+            maxClassCaches: option.maxClassCaches || 50,
         };
         this.cache = new Map();
+        this.classCount = 0;
+        this.stats = {
+            hits: 0,
+            misses: 0,
+            sets: 0,
+        };
     }
 
     async get(query, cacheKey) {
-        const className = query.className;
+        try {
+            const className = query.className;
+            if (!className) {
+                throw new Error('Query must have a className');
+            }
 
-        if (!this.cache.has(className)) {
-            this.cache.set(className, new LRUCache(options));
+            if (!this.cache.has(className)) {
+                this.cache.set(className, new LRUCache(options));
+            }
+
+            const cachedValue = this.cache.get(className)?.get(cacheKey);
+            if (cachedValue) {
+                this.stats.hits++;
+            } else {
+                this.stats.misses++;
+            }
+            return cachedValue;
+        } catch (error) {
+            console.error('Cache get error:', error);
+            return null;
         }
-
-        return this.cache.get(className)?.get(cacheKey);
     }
 
     set(className, cacheKey, data) {
         if (!this.cache.has(className)) {
+            if (this.classCount >= options.maxClassCaches) {
+                const oldestClass = Array.from(this.cache.keys())[0];
+                this.cache.delete(oldestClass);
+            } else {
+                this.classCount++;
+            }
             this.cache.set(className, new LRUCache(options));
         }
+        this.stats.sets++;
         this.cache.get(className).set(cacheKey, data);
     }
 
@@ -51,6 +79,13 @@ class ParseCache {
         return objectHash(JSON.stringify(key));
     }
 
+    getStats() {
+        return {
+            ...this.stats,
+            hitRate: this.stats.hits / (this.stats.hits + this.stats.misses),
+            cacheSize: this.cache.size,
+        };
+    }
 }
 
 const fNames = {
@@ -138,8 +173,9 @@ function parseCacheInit(options = {}) {
 
         if (!cachedData) {
             cachedData = await this.findAll(options);
-            if (cachedData)
+            if (cachedData) {
                 cache.set(this.className, cacheKey, cachedData);
+            }
         }
 
         return cachedData;
