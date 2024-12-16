@@ -129,7 +129,6 @@ jobs:
         with:
           name: package
           path: "*.tgz"
-
       - name: Install MongoDB
         run: |
           wget -qO - https://www.mongodb.org/static/pgp/server-7.0.asc | sudo apt-key add -

@@ -165,8 +165,7 @@ describe('Parse Cache Memory Unit Tests', () => {
         try {
             await Promise.all([
                 new Promise(resolve => httpServer?.close(resolve)),
-                parseServer?.handleShutdown?.(),
-                mongod?.stop()
+                parseServer?.handleShutdown?.()
             ]);
         } catch (error) {
             console.error('Cleanup error:', error);
