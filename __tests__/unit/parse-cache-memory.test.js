@@ -2,10 +2,15 @@ const { parseCacheInit } = require('../../index');
 const { ParseServer } = require('parse-server');
 const Parse = require('parse/node');
 const express = require('express');
-const { getAvailablePort, createMongoServer } = require('../helpers/testUtils');
+const { 
+    getAvailablePort, 
+    createMongoServer, 
+    startParseServer, 
+    stopParseServer 
+} = require('../helpers/testUtils');
 
 // Add expected methods list at the top of the file
-const expectedMethods = [
+const CACHE_METHODS = [
     'findCache',
     'getCache',
     'countCache',
@@ -25,12 +30,12 @@ function verifyCacheMethods() {
         .filter(key => key.includes('Cache'));
     
     // Check if all expected methods are present
-    const missingMethods = expectedMethods.filter(method => !addedMethods.includes(method));
+    const missingMethods = CACHE_METHODS.filter(method => !addedMethods.includes(method));
     if (missingMethods.length > 0) {
         console.log('Missing methods:', missingMethods);
     }
     
-    return expectedMethods.every(method => addedMethods.includes(method));
+    return CACHE_METHODS.every(method => addedMethods.includes(method));
 }
 
 function assertStats(stats, expected, message = '') {
@@ -288,8 +293,8 @@ describe('Parse Cache Memory Unit Tests', () => {
         beforeEach(() => {
             cache.resetEverything();
         });
-        it('should properly add cache methods to Parse.Query.prototype', () => {
 
+        it('should properly add cache methods to Parse.Query.prototype', () => {
             const verified = verifyCacheMethods();
             if (!verified) {
                 const currentMethods = Object.keys(Parse.Query.prototype)
@@ -300,7 +305,7 @@ describe('Parse Cache Memory Unit Tests', () => {
             expect(verified).toBe(true);
 
             // Additional verification
-            expectedMethods.forEach(method => {
+            CACHE_METHODS.forEach(method => {
                 const hasMethod = typeof Parse.Query.prototype[method] === 'function';
                 if (!hasMethod) {
                     console.log(`Missing method: ${method}`);
