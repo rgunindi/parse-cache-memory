@@ -220,7 +220,7 @@ describe('Parse Cache Memory Unit Tests', () => {
     describe('Cache Invalidation', () => {
         beforeEach(() => {
             cache.resetEverything();
-        })
+        });
           it('should clear cache on save', async () => {
             const TestClass = Parse.Object.extend('TestClass');
             const testObj = new TestClass();
@@ -287,7 +287,7 @@ describe('Parse Cache Memory Unit Tests', () => {
     describe('Cache Initialization', () => {
         beforeEach(() => {
             cache.resetEverything();
-        })
+        });
         it('should properly add cache methods to Parse.Query.prototype', () => {
 
             const verified = verifyCacheMethods();
