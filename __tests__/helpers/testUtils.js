@@ -19,15 +19,33 @@ async function createMongoServer() {
     try {
         return await MongoMemoryServer.create({
             binary: {
-                version: '4.0.3'
-            }
+                version: '4.0.3',
+                systemBinary: process.env.MONGOMS_SYSTEM_BINARY,
+                skipMD5: true,
+                arch: process.platform === 'linux' ? 'x64' : undefined
+            },
+            instance: {
+                storageEngine: 'wiredTiger',
+                args: ['--quiet']
+            },
+            autoStart: false
         });
     } catch (error) {
-        console.error('MongoDB Memory Server creation failed:', error);
-        // Fallback to local MongoDB
-        return {
-            getUri: () => 'mongodb://localhost:27017/test'
-        };
+        console.warn('MongoDB Memory Server creation warning:', error.message);
+        // Fallback configuration
+        try {
+            return await MongoMemoryServer.create({
+                instance: {
+                    storageEngine: 'ephemeralForTest'
+                }
+            });
+        } catch (fallbackError) {
+            console.error('MongoDB Memory Server fallback failed:', fallbackError);
+            // Last resort fallback
+            return {
+                getUri: () => process.env.MONGODB_URI || 'mongodb://localhost:27017/test'
+            };
+        }
     }
 }
 

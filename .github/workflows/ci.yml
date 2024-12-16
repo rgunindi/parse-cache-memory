@@ -24,7 +24,12 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libssl3
+          sudo apt-get install -y libssl3 libssl1.1
+          # For older Ubuntu versions that don't have libssl1.1
+          if [ $? -ne 0 ]; then
+            wget http://archive.ubuntu.com/ubuntu/pool/main/o/openssl/libssl1.1_1.1.1f-1ubuntu2_amd64.deb
+            sudo dpkg -i libssl1.1_1.1.1f-1ubuntu2_amd64.deb
+          fi
           
       - name: Install dependencies
         run: |
@@ -40,6 +45,9 @@ jobs:
         env:
           PARSE_MASTER_KEY: 'test-master-key'
           PARSE_APP_ID: 'test-app-id'
+          MONGOMS_VERSION: "4.0.3"
+          MONGOMS_DOWNLOAD_URL: "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1804-4.0.3.tgz"
+          MONGOMS_SYSTEM_BINARY: "/usr/bin/mongod"
 
   integration-tests:
     runs-on: ubuntu-latest
@@ -65,6 +73,9 @@ jobs:
         env:
           PARSE_MASTER_KEY: 'test-master-key'
           PARSE_APP_ID: 'test-app-id'
+          MONGOMS_VERSION: "4.0.3"
+          MONGOMS_DOWNLOAD_URL: "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1804-4.0.3.tgz"
+          MONGOMS_SYSTEM_BINARY: "/usr/bin/mongod"
 
   main-tests:
     runs-on: ubuntu-latest
@@ -90,6 +101,9 @@ jobs:
         env:
           PARSE_MASTER_KEY: 'test-master-key'
           PARSE_APP_ID: 'test-app-id'
+          MONGOMS_VERSION: "4.0.3"
+          MONGOMS_DOWNLOAD_URL: "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1804-4.0.3.tgz"
+          MONGOMS_SYSTEM_BINARY: "/usr/bin/mongod"
 
   build:
     needs: [unit-tests, integration-tests, main-tests]

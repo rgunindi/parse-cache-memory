@@ -55,8 +55,11 @@ describe('Parse Cache Memory Unit Tests', () => {
 
     beforeAll(async () => {
         try {
-            // Setup MongoDB Memory Server
             mongod = await createMongoServer();
+            if (!mongod) {
+                throw new Error('Failed to create MongoDB server');
+            }
+
             const mongoUri = mongod.getUri();
 
             const masterKey = process.env.PARSE_MASTER_KEY || 'test-master-key';
@@ -129,7 +132,7 @@ describe('Parse Cache Memory Unit Tests', () => {
                 }
             }
         } catch (error) {
-            console.error('Setup failed:', error);
+            console.error('Test setup failed:', error);
             throw error;
         }
     });
