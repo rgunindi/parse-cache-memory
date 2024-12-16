@@ -20,7 +20,7 @@ async function createMongoServer() {
         // Use real MongoDB in CI
         if (process.env.CI) {
             return {
-                getUri: () => process.env.MONGODB_URI || 'mongodb://localhost:27017/test'
+                getUri: () => process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/test'
             };
         }
 
@@ -32,14 +32,15 @@ async function createMongoServer() {
                 skipMD5: true
             },
             instance: {
-                storageEngine: 'wiredTiger'
+                storageEngine: 'wiredTiger',
+                ip: '127.0.0.1'
             }
         });
     } catch (error) {
         console.warn('MongoDB setup warning:', error.message);
-        // Fallback to local MongoDB
+        // Fallback to local MongoDB with IPv4
         return {
-            getUri: () => 'mongodb://localhost:27017/test'
+            getUri: () => 'mongodb://127.0.0.1:27017/test'
         };
     }
 }

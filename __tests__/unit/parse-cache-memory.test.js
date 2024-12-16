@@ -76,7 +76,7 @@ describe('Parse Cache Memory Unit Tests', () => {
                 databaseURI: mongoUri,
                 appId: appId,
                 masterKey: masterKey,
-                serverURL: `http://localhost:${port}/parse`,
+                serverURL: `http://127.0.0.1:${port}/parse`,
                 javascriptKey: 'test-js-key',
                 allowClientClassCreation: true,
                 directAccess: true,
@@ -99,7 +99,7 @@ describe('Parse Cache Memory Unit Tests', () => {
             // Initialize Parse SDK with master key
             global.Parse = Parse;  // Make Parse explicitly global
             Parse.initialize(appId, 'test-js-key', masterKey);
-            Parse.serverURL = `http://localhost:${port}/parse`;
+            Parse.serverURL = `http://127.0.0.1:${port}/parse`;
 
             // Set master key for all requests
             const originalController = Parse.CoreManager.getRESTController();
