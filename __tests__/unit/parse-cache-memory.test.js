@@ -61,7 +61,7 @@ describe('Parse Cache Memory Unit Tests', () => {
             }
 
             const mongoUri = mongod.getUri();
-            console.log('MongoDB URI:', mongoUri); // Debug log
+            console.log('MongoDB URI:', mongoUri);
 
             const masterKey = process.env.PARSE_MASTER_KEY || 'test-master-key';
             const appId = process.env.PARSE_APP_ID || 'test-app-id';
@@ -134,7 +134,7 @@ describe('Parse Cache Memory Unit Tests', () => {
             }
         } catch (error) {
             console.error('Test setup failed:', error);
-            process.exit(1); // Force exit on setup failure
+            throw error;
         }
     });
 
