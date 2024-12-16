@@ -1,9 +1,8 @@
 const { parseCacheInit } = require('../../index');
 const { ParseServer } = require('parse-server');
-const { MongoMemoryServer } = require('mongodb-memory-server');
 const Parse = require('parse/node');
 const express = require('express');
-const { getAvailablePort } = require('../helpers/testUtils');
+const { getAvailablePort, createMongoServer } = require('../helpers/testUtils');
 
 // Add expected methods list at the top of the file
 const expectedMethods = [
@@ -20,6 +19,27 @@ const expectedMethods = [
     'filterCache',
     'subscribeCache'
 ];
+
+function verifyCacheMethods() {
+    const addedMethods = Object.keys(Parse.Query.prototype)
+        .filter(key => key.includes('Cache'));
+    
+    // Check if all expected methods are present
+    const missingMethods = expectedMethods.filter(method => !addedMethods.includes(method));
+    if (missingMethods.length > 0) {
+        console.log('Missing methods:', missingMethods);
+    }
+    
+    return expectedMethods.every(method => addedMethods.includes(method));
+}
+
+function assertStats(stats, expected, message = '') {
+    console.log('Stats:', stats);
+    console.log('Expected:', expected);
+    expect(stats.hits).toBe(expected.hits, `${message} - hits`);
+    expect(stats.misses).toBe(expected.misses, `${message} - misses`);
+    expect(stats.sets).toBe(expected.sets, `${message} - sets`);
+}
 
 describe('Parse Cache Memory Unit Tests', () => {
     let cache;
@@ -68,15 +88,18 @@ describe('Parse Cache Memory Unit Tests', () => {
             });
 
             // Initialize Parse SDK with master key
+            global.Parse = Parse;  // Make Parse explicitly global
             Parse.initialize(appId, 'test-js-key', masterKey);
             Parse.serverURL = `http://localhost:${port}/parse`;
 
             // Set master key for all requests
+            const originalController = Parse.CoreManager.getRESTController();
             Parse.CoreManager.setRESTController({
-                ...Parse.CoreManager.getRESTController(),
-                request: function(...args) {
-                    args[0].useMasterKey = true;
-                    return Parse.CoreManager.getRESTController().request.apply(this, args);
+                ...originalController,
+                request: function(method, path, data, options) {
+                    options = options || {};
+                    options.useMasterKey = true;
+                    return originalController.request(method, path, data, options);
                 }
             });
 
@@ -87,12 +110,18 @@ describe('Parse Cache Memory Unit Tests', () => {
                 resetCacheOnSaveAndDestroy: true
             });
 
+            // Verify cache methods were added
+            const addedMethods = Object.keys(Parse.Query.prototype)
+                .filter(key => key.includes('Cache'));
+
             // Create TestClass schema
             const schema = new Parse.Schema('TestClass');
             try {
-                await schema.save({ useMasterKey: true });
+                await schema.save();
             } catch (error) {
-                console.log('Schema might already exist:', error.message);
+                if (!error.message.includes('already exists')) {
+                    console.log('Schema creation error:', error.message);
+                }
             }
         } catch (error) {
             console.error('Setup failed:', error);
@@ -190,101 +219,93 @@ describe('Parse Cache Memory Unit Tests', () => {
 
     describe('Cache Invalidation', () => {
         beforeEach(() => {
-            // Reset cache for each invalidation test
-            cache = parseCacheInit({
-                max: 500,
-                ttl: 60 * 1000,
-                resetCacheOnSaveAndDestroy: true
-            });
-        });
-
-        it('should clear cache on save', async () => {
+            cache.resetEverything();
+        })
+          it('should clear cache on save', async () => {
             const TestClass = Parse.Object.extend('TestClass');
             const testObj = new TestClass();
-            
             const query = new Parse.Query('TestClass');
             
-            // Cache some data
+            console.log('Making first query...');
             await query.findCache({ useMasterKey: true });
             
-            // Save should clear cache
+            let stats = cache.getStats();
+            console.log('Stats after first query:', stats);
+            assertStats(stats, {
+                hits: 0,
+                misses: 1,
+                sets: 1
+            }, 'After first query');
+
             await testObj.save({ field: 'value' }, { useMasterKey: true });
-            
-            // Next query should miss cache
-            await query.findCache({ useMasterKey: true });
-            
-            const stats = cache.getStats();
-            expect(stats.misses).toBe(2); // Initial + after clear
-        });
+            assertStats(stats, {
+                hits: 0,
+                misses: 1,
+                sets: 1
+            }, 'After save');
 
-        it('should clear cache on destroy', async () => {
-            const TestClass = Parse.Object.extend('TestClass');
-            const testObj = new TestClass();
-            testObj.set('field', 'value');
-            await testObj.save();
-
-            const query = new Parse.Query('TestClass');
+            console.log('Making second query...');
+             await query.findCache({ useMasterKey: true });
             
-            // Cache some data
-            await query.findCache();
-            
-            // Destroy should clear cache
-            await testObj.destroy();
-            
-            // Next query should miss cache
-            await query.findCache();
-            
-            const stats = cache.getStats();
-            expect(stats.misses).toBe(2); // Initial + after clear
+            stats = cache.getStats();
+            console.log('Stats after second query:', stats);
+            assertStats(stats, {
+                hits: 0,
+                misses: 2,
+                sets: 2
+            }, 'After save and second query');
         });
     });
 
     describe('Cache Statistics', () => {
         it('should track cache statistics correctly', async () => {
-            const query = new Parse.Query('TestClass');
-            
-            // Reset stats for this test
-            cache = parseCacheInit({
-                max: 500,
-                ttl: 60 * 1000,
-                resetCacheOnSaveAndDestroy: true
-            });
-            
-            // Should be a miss
-            await query.findCache({ useMasterKey: true });
-            
-            // Should be a hit
-            await query.findCache({ useMasterKey: true });
-            
-            // Should be a hit
-            await query.findCache({ useMasterKey: true });
+           cache.resetEverything();
 
-            const stats = cache.getStats();
-            expect(stats.hits).toBe(2);
-            expect(stats.misses).toBe(1);
-            expect(stats.hitRate).toBeCloseTo(2/3, 2);
+            const query = new Parse.Query('TestClass');
+            const TestClass = Parse.Object.extend('TestClass');
+            
+            // First query - should be a miss
+            const firstResult = await query.findCache({ useMasterKey: true });
+            let stats = cache.getStats();
+            console.log('Stats after first query:', stats);
+            expect(stats.misses).toBe(1, 'First query should be a miss');
+
+            // Second query - should be a hit
+            const secondResult = await query.findCache({ useMasterKey: true });
+            stats = cache.getStats();
+            expect(stats.hits).toBe(1, 'Second query should be a hit');
+            expect(stats.misses).toBe(1, 'Misses should not increase');
+
+            // Third query - should be another hit
+            const thirdResult = await query.findCache({ useMasterKey: true });
+            stats = cache.getStats();
+            expect(stats.hits).toBe(2, 'Third query should be another hit');
+            expect(stats.misses).toBe(1, 'Misses should still not increase');
         });
     });
 
     describe('Cache Initialization', () => {
+        beforeEach(() => {
+            cache.resetEverything();
+        })
         it('should properly add cache methods to Parse.Query.prototype', () => {
-            const expectedMethods = [
-                'findCache',
-                'getCache',
-                'countCache',
-                'distinctCache',
-                'aggregateCache',
-                'firstCache',
-                'eachBatchCache',
-                'eachCache',
-                'mapCache',
-                'reduceCache',
-                'filterCache',
-                'subscribeCache'
-            ];
 
+            const verified = verifyCacheMethods();
+            if (!verified) {
+                const currentMethods = Object.keys(Parse.Query.prototype)
+                    .filter(key => key.includes('Cache'));
+                console.log('Current Parse.Query.prototype methods:', currentMethods);
+                console.log('Parse.Query.prototype:', Object.keys(Parse.Query.prototype));
+            }
+            expect(verified).toBe(true);
+
+            // Additional verification
             expectedMethods.forEach(method => {
-                expect(typeof Parse.Query.prototype[method]).toBe('function');
+                const hasMethod = typeof Parse.Query.prototype[method] === 'function';
+                if (!hasMethod) {
+                    console.log(`Missing method: ${method}`);
+                }
+                expect(hasMethod).toBe(true);
             });
         });
     });

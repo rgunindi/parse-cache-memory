@@ -19,6 +19,15 @@ module.exports = {
         'no-console': 'warn',
         'semi': ['error', 'always']
     },
+    overrides: [
+        {
+            files: ['**/*.test.js', '**/__tests__/**'],
+            rules: {
+                'no-unused-vars': 'off',
+                'no-console': 'off'
+            }
+        }
+    ],
     ignorePatterns: [
         'node_modules/',
         'coverage/',

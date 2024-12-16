@@ -112,8 +112,8 @@ describe('ParseCacheMemory', () => {
 
         it('should respect TTL for cached results', async () => {
             const query = new Parse.Query('TestClass');
-            cache = parseCacheInit({ ttl: 1000 }); // 1 second TTL
-
+            let newCache = parseCacheInit({ ttl: 1000 }); // 1 second TTL
+            
             const firstResult = await query.findCache({ useMasterKey: true });
             await new Promise(resolve => setTimeout(resolve, 1100));
             const secondResult = await query.findCache({ useMasterKey: true });
@@ -138,6 +138,11 @@ describe('ParseCacheMemory', () => {
     });
 
     describe('Cache with Parse Operations', () => {
+        beforeEach(() => {
+            // Reset cache before each test
+            cache.resetEverything();
+        });
+
         it('should handle saveAll operation correctly', async () => {
             const TestClass = Parse.Object.extend('TestClass');
             const objects = [
@@ -146,12 +151,19 @@ describe('ParseCacheMemory', () => {
             ];
 
             const query = new Parse.Query('TestClass');
+            
+            // First query - should miss cache
             await query.findCache({ useMasterKey: true });
+            let stats = cache.getStats();
+            expect(stats.misses).toBe(1, 'First query should miss');
+            
+            // Save objects - should clear cache
             await Parse.Object.saveAll(objects, { useMasterKey: true });
+            
+            // Second query - should miss cache again because cache was cleared
             await query.findCache({ useMasterKey: true });
-
-            const stats = cache.getStats();
-            expect(stats.misses).toBe(2);
+            stats = cache.getStats();
+            expect(stats.misses).toBe(2, 'Second query should miss after cache clear');
         });
 
         it('should handle destroyAll operation correctly', async () => {
@@ -163,12 +175,19 @@ describe('ParseCacheMemory', () => {
             await Parse.Object.saveAll(objects, { useMasterKey: true });
 
             const query = new Parse.Query('TestClass');
+            
+            // First query - should miss cache
             await query.findCache({ useMasterKey: true });
+            let stats = cache.getStats();
+            expect(stats.misses).toBe(1, 'First query should miss');
+            
+            // Destroy objects - should clear cache
             await Parse.Object.destroyAll(objects, { useMasterKey: true });
+            
+            // Second query - should miss cache again because cache was cleared
             await query.findCache({ useMasterKey: true });
-
-            const stats = cache.getStats();
-            expect(stats.misses).toBe(2);
+            stats = cache.getStats();
+            expect(stats.misses).toBe(2, 'Second query should miss after cache clear');
         });
     });
 }); 

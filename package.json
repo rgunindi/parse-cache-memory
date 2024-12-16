@@ -7,6 +7,7 @@
     "test": "cross-env PARSE_MASTER_KEY=test-master-key PARSE_APP_ID=test-app-id jest --testTimeout=30000 --runInBand --forceExit",
     "test:unit": "jest --testTimeout=30000 --runInBand --forceExit __tests__/unit/parse-cache-memory.test.js",
     "test:integration": "jest --testTimeout=30000 --runInBand --forceExit __tests__/integration/cache-integration.test.js",
+    "test:main": "jest --testTimeout=30000 --runInBand --forceExit __tests__/parse-cache-memory.test.js",
     "test:watch": "jest --watch --testTimeout=30000 --runInBand",
     "test:coverage": "jest --coverage --testTimeout=30000 --runInBand --forceExit",
     "lint": "eslint . --fix",
