@@ -27,7 +27,7 @@ async function createMongoServer() {
         // Use MongoDB Memory Server for local development
         return await MongoMemoryServer.create({
             binary: {
-                version: '7.0.5',
+                version: '6.0.2',
                 downloadDir: './.mongodb-binaries',
                 skipMD5: true
             },
