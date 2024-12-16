@@ -8,7 +8,7 @@ on:
 
 jobs:
   unit-tests:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     strategy:
       matrix:
         node-version: [14.x, 16.x, 18.x]
@@ -24,7 +24,7 @@ jobs:
       - name: Install MongoDB
         run: |
           wget -qO - https://www.mongodb.org/static/pgp/server-7.0.asc | sudo apt-key add -
-          echo "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu $(lsb_release -cs)/mongodb-org/7.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-7.0.list
+          echo "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/7.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-7.0.list
           sudo apt-get update
           sudo apt-get install -y mongodb-org
 
@@ -52,7 +52,7 @@ jobs:
           MONGODB_URI: 'mongodb://localhost:27017/test'
 
   integration-tests:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     needs: unit-tests
     steps:
       - uses: actions/checkout@v3
@@ -80,7 +80,7 @@ jobs:
           MONGOMS_SYSTEM_BINARY: "/usr/bin/mongod"
 
   main-tests:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     needs: unit-tests
     steps:
       - uses: actions/checkout@v3
@@ -109,7 +109,7 @@ jobs:
 
   build:
     needs: [unit-tests, integration-tests, main-tests]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v3
       
@@ -133,7 +133,7 @@ jobs:
       - name: Install MongoDB
         run: |
           wget -qO - https://www.mongodb.org/static/pgp/server-7.0.asc | sudo apt-key add -
-          echo "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu $(lsb_release -cs)/mongodb-org/7.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-7.0.list
+          echo "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/7.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-7.0.list
           sudo apt-get update
           sudo apt-get install -y mongodb-org
 
