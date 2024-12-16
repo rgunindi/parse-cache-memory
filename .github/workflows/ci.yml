@@ -21,10 +21,17 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
           
-      - name: Install system dependencies
+      - name: Install MongoDB
         run: |
+          wget -qO - https://www.mongodb.org/static/pgp/server-6.0.asc | sudo apt-key add -
+          echo "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu $(lsb_release -cs)/mongodb-org/6.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-6.0.list
           sudo apt-get update
-          sudo apt-get install -y libssl3
+          sudo apt-get install -y mongodb-org
+
+      - name: Start MongoDB
+        run: |
+          sudo systemctl start mongod
+          sleep 5  # Give MongoDB time to start
           
       - name: Install dependencies
         run: |
@@ -40,9 +47,7 @@ jobs:
         env:
           PARSE_MASTER_KEY: 'test-master-key'
           PARSE_APP_ID: 'test-app-id'
-          MONGOMS_VERSION: "6.0.2"
-          MONGOMS_DOWNLOAD_URL: "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu2204-6.0.2.tgz"
-          MONGOMS_SYSTEM_BINARY: "/usr/bin/mongod"
+          MONGODB_URI: 'mongodb://localhost:27017/test'
 
   integration-tests:
     runs-on: ubuntu-latest
