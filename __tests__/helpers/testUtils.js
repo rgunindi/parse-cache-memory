@@ -6,7 +6,7 @@ function getAvailablePort() {
         const server = net.createServer();
         server.unref();
         server.on('error', reject);
-        server.listen(0, () => {
+        server.listen(0, '127.0.0.1', () => {
             const port = server.address().port;
             server.close(() => {
                 resolve(port);
@@ -55,23 +55,22 @@ async function startParseServer(mongoUri, port, appId, masterKey) {
         databaseURI: mongoUri,
         appId: appId,
         masterKey: masterKey,
-        serverURL: `http://localhost:${port}/parse`,
+        serverURL: `http://127.0.0.1:${port}/parse`,
         javascriptKey: 'test-js-key',
         allowClientClassCreation: true,
         directAccess: true,
         enforcePrivateUsers: false,
-        silent: true, // Suppress Parse Server logs
+        silent: true,
         enableAnonymousUsers: false,
         maxUploadSize: '5mb'
     });
 
-    // Mount Parse Server
     app.use('/parse', parseServer);
     
-    // Start server with timeout
+    // Start server with timeout and explicit IPv4
     const httpServer = await Promise.race([
         new Promise((resolve, reject) => {
-            const server = app.listen(port, () => resolve(server));
+            const server = app.listen(port, '127.0.0.1', () => resolve(server));
             server.on('error', reject);
         }),
         new Promise((_, reject) => 
