@@ -17,30 +17,29 @@ function getAvailablePort() {
 
 async function createMongoServer() {
     try {
+        // Try to create MongoDB Memory Server without system binary
         return await MongoMemoryServer.create({
             binary: {
                 version: '6.0.2',
-                skipMD5: true,
-                arch: process.platform === 'linux' ? 'x64' : undefined
+                downloadDir: './.mongodb-binaries',
+                skipMD5: true
             },
             instance: {
                 storageEngine: 'wiredTiger',
-                args: ['--quiet']
-            }
+                args: []  // Remove quiet flag
+            },
+            autoStart: true  // Ensure server starts
         });
     } catch (error) {
         console.warn('MongoDB Memory Server creation warning:', error.message);
+        // Try with minimal config
         try {
             return await MongoMemoryServer.create({
-                instance: {
-                    storageEngine: 'ephemeralForTest'
-                }
+                instance: { storageEngine: 'ephemeralForTest' }
             });
         } catch (fallbackError) {
-            console.error('MongoDB Memory Server fallback failed:', fallbackError);
-            return {
-                getUri: () => process.env.MONGODB_URI || 'mongodb://localhost:27017/test'
-            };
+            console.error('All MongoDB attempts failed:', fallbackError);
+            throw new Error('Could not start MongoDB server');
         }
     }
 }
