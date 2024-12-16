@@ -83,48 +83,17 @@ async function startParseServer(mongoUri, port, appId, masterKey) {
 
 async function stopParseServer(httpServer, parseServer) {
     return new Promise((resolve) => {
-        const timeout = setTimeout(() => {
-            console.log('Server shutdown timed out, forcing close');
-            resolve();
-        }, 5000);
-
-        // Handle shutdown sequence
-        const handleShutdown = async () => {
-            try {
+        if (httpServer) {
+            httpServer.close(() => {
                 if (parseServer && typeof parseServer.handleShutdown === 'function') {
-                    await parseServer.handleShutdown();
-                }
-
-                if (httpServer) {
-                    // Force close all connections
-                    httpServer.unref();
-                    httpServer.close(() => {
-                        clearTimeout(timeout);
-                        resolve();
-                    });
-
-                    // Force close after timeout
-                    setTimeout(() => {
-                        httpServer.emit('close');
-                        resolve();
-                    }, 1000);
+                    parseServer.handleShutdown().then(resolve);
                 } else {
-                    clearTimeout(timeout);
                     resolve();
                 }
-            } catch (error) {
-                console.warn('Server shutdown warning:', error.message);
-                clearTimeout(timeout);
-                resolve();
-            }
-        };
-
-        // Start shutdown sequence
-        handleShutdown().catch(error => {
-            console.error('Shutdown sequence failed:', error);
-            clearTimeout(timeout);
+            });
+        } else {
             resolve();
-        });
+        }
     });
 }
 
