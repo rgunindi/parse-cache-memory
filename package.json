@@ -7,6 +7,7 @@
     "pretest:unit": "node scripts/cleanup.js",
     "pretest:integration": "node scripts/cleanup.js",
     "pretest:main": "node scripts/cleanup.js",
+    "test": "npm run test:unit && npm run test:integration && npm run test:main",
     "test:unit": "cross-env PARSE_MASTER_KEY=test-master-key PARSE_APP_ID=test-app-id jest --testTimeout=60000 --runInBand --forceExit --detectOpenHandles --no-coverage __tests__/unit/parse-cache-memory.test.js",
     "test:integration": "cross-env PARSE_MASTER_KEY=test-master-key PARSE_APP_ID=test-app-id jest --testTimeout=60000 --runInBand --forceExit --detectOpenHandles __tests__/integration/cache-integration.test.js",
     "test:main": "cross-env PARSE_MASTER_KEY=test-master-key PARSE_APP_ID=test-app-id jest --testTimeout=60000 --runInBand --forceExit --detectOpenHandles __tests__/parse-cache-memory.test.js",
