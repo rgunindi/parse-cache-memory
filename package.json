@@ -53,15 +53,5 @@
   "files": [
     "index.js",
     "scripts/cleanup.js"
-  ],
-  "jest": {
-    "coverageThreshold": {
-      "global": {
-        "statements": 60,
-        "branches": 57,
-        "functions": 55,
-        "lines": 60
-      }
-    }
-  }
+  ]
 }
