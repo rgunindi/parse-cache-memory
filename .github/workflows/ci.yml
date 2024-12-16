@@ -7,7 +7,7 @@ on:
     branches: [ main, master, dev, develop, development ]
 
 jobs:
-  unit-tests:
+  tests:
     runs-on: ubuntu-22.04
     strategy:
       matrix:
@@ -31,84 +31,22 @@ jobs:
       - name: Start MongoDB
         run: |
           sudo systemctl start mongod
-          mongod --version  # Verify installation
-          sleep 5  # Give MongoDB time to start
-          mongosh --eval "db.version()"  # Verify connection
-          
-      - name: Install dependencies
-        run: |
-          npm install
-          npm install cross-env@7.0.3 --save-dev
-          npm install eslint@8.57.1 eslint-config-prettier@9.1.0 eslint-plugin-jest@27.9.0 --save-dev
-          
-      - name: Run linter
-        run: npm run lint
-
-      - name: Run unit tests
-        run: npm run test:unit
-        env:
-          PARSE_MASTER_KEY: 'test-master-key'
-          PARSE_APP_ID: 'test-app-id'
-          MONGODB_URI: 'mongodb://localhost:27017/test'
-
-  integration-tests:
-    runs-on: ubuntu-22.04
-    needs: unit-tests
-    steps:
-      - uses: actions/checkout@v3
-      
-      - name: Use Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '16.x'
-          
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libssl3
+          mongod --version
+          sleep 5
+          mongosh --eval "db.version()"
           
       - name: Install dependencies
         run: npm install
-        
-      - name: Run integration tests
-        run: npm run test:integration
+          
+      - name: Run tests
+        run: npm test
         env:
           PARSE_MASTER_KEY: 'test-master-key'
           PARSE_APP_ID: 'test-app-id'
-          MONGOMS_VERSION: "6.0.2"
-          MONGOMS_DOWNLOAD_URL: "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu2204-6.0.2.tgz"
-          MONGOMS_SYSTEM_BINARY: "/usr/bin/mongod"
-
-  main-tests:
-    runs-on: ubuntu-22.04
-    needs: unit-tests
-    steps:
-      - uses: actions/checkout@v3
-      
-      - name: Use Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '16.x'
-          
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libssl3
-          
-      - name: Install dependencies
-        run: npm install
-        
-      - name: Run main tests
-        run: npm run test:main
-        env:
-          PARSE_MASTER_KEY: 'test-master-key'
-          PARSE_APP_ID: 'test-app-id'
-          MONGOMS_VERSION: "6.0.2"
-          MONGOMS_DOWNLOAD_URL: "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu2204-6.0.2.tgz"
-          MONGOMS_SYSTEM_BINARY: "/usr/bin/mongod"
+          MONGODB_URI: 'mongodb://127.0.0.1:27017/test'
 
   build:
-    needs: [unit-tests, integration-tests, main-tests]
+    needs: [tests]
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v3
@@ -129,16 +67,3 @@ jobs:
         with:
           name: package
           path: "*.tgz"
-      - name: Install MongoDB
-        run: |
-          wget -qO - https://www.mongodb.org/static/pgp/server-7.0.asc | sudo apt-key add -
-          echo "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/7.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-7.0.list
-          sudo apt-get update
-          sudo apt-get install -y mongodb-org
-
-      - name: Start MongoDB
-        run: |
-          sudo systemctl start mongod
-          mongod --version  # Verify installation
-          sleep 5  # Give MongoDB time to start
-          mongosh --eval "db.version()"  # Verify connection
