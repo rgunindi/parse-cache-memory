@@ -7,22 +7,15 @@ class ParseCache {
     constructor(option = {}) {
         options = {
             max: option.max || 500,
-            maxSize: option.maxSize || 5000,
             ttl: option.ttl || 1000 * 60 * 5,
             allowStale: option.allowStale || false,
             updateAgeOnGet: option.updateAgeOnGet || false,
             updateAgeOnHas: option.updateAgeOnHas || false,
-            sizeCalculation: (value) => {
-                if (Array.isArray(value)) {
-                    return value.length;
-                } else if (typeof value === 'object') {
-                    return JSON.stringify(value).length;
-                }
-                return 1;
-            },
             resetCacheOnSaveAndDestroy: option.resetCacheOnSaveAndDestroy || false,
             maxClassCaches: option.maxClassCaches || 50,
+            debug: option.debug || false,
         };
+        this.logger = new CacheLogger(options.debug);
         this.cache = new Map();
         this.classCount = 0;
         this.stats = {
@@ -36,11 +29,13 @@ class ParseCache {
         try {
             const className = query.className;
             if (!className) {
+                this.logger.warn('No className provided for query');
                 this.stats.misses++;
                 return null;
             }
 
             if (!this.cache.has(className)) {
+                this.logger.log(`Creating new cache for class: ${className}`);
                 this.stats.misses++;
                 this.cache.set(className, new LRUCache(options));
                 return null;
@@ -50,14 +45,16 @@ class ParseCache {
             const cachedValue = classCache.get(cacheKey);
 
             if (cachedValue) {
+                this.logger.log(`Cache hit for ${className}`, { cacheKey });
                 this.stats.hits++;
                 return cachedValue;
             }
             
+            this.logger.log(`Cache miss for ${className}`, { cacheKey });
             this.stats.misses++;
             return null;
         } catch (error) {
-            console.error('Cache get error:', error);
+            this.logger.error('Error getting from cache:', error);
             this.stats.misses++;
             return null;
         }
@@ -134,6 +131,7 @@ const fNames = {
 
 function parseCacheInit(options = {}) {
     const cache = new ParseCache(options);
+    const logger = new CacheLogger(options.debug);
     const originalSave = Parse.Object.prototype.save;
     const originalSaveAll = Parse.Object.saveAll;
     const originalDestroy = Parse.Object.prototype.destroy;
@@ -147,21 +145,25 @@ function parseCacheInit(options = {}) {
         if (!ParseInstance.Query.prototype[cacheMethod]) {
             ParseInstance.Query.prototype[cacheMethod] = async function(...args) {
                 const cacheKey = cache.generateCacheKey(this, ...args, originalMethod);
-                console.log(`Cache lookup for ${this.className}, method: ${cacheMethod}`);
+                logger.log(`Cache lookup for ${this.className}`, { 
+                    method: cacheMethod,
+                    cacheKey 
+                });
                 
                 let cachedData = await cache.get(this, cacheKey);
-                console.log(`Cache ${cachedData ? 'hit' : 'miss'} for ${this.className}`);
+                logger.log(`Cache ${cachedData ? 'hit' : 'miss'} for ${this.className}`);
 
                 if (!cachedData) {
                     cachedData = await this[originalMethod](...args);
                     if (cachedData) {
                         cache.set(this.className, cacheKey, cachedData);
-                        console.log(`Cached data for ${this.className}`);
+                        logger.log(`Cached data for ${this.className}`, {
+                            size: Array.isArray(cachedData) ? cachedData.length : 1
+                        });
                     }
                 }
 
-                const currentStats = cache.getStats();
-                console.log(`Cache stats after ${cacheMethod}:`, currentStats);
+                logger.log(`Cache stats after ${cacheMethod}:`, cache.getStats());
 
                 return cachedData;
             };
@@ -172,7 +174,7 @@ function parseCacheInit(options = {}) {
         ParseInstance.Object.prototype.save = async function (...args) {
             const result = await originalSave.call(this, ...args);
             if (result) {
-                console.log('Clearing cache for save:', this.className);
+                logger.log('Clearing cache for save:', this.className);
                 cache.clear(this.className);
             }
             return result;
@@ -181,7 +183,7 @@ function parseCacheInit(options = {}) {
         ParseInstance.Object.saveAll = async function (...args) {
             const result = await originalSaveAll.apply(this, args);
             if (result && result.length > 0) {
-                console.log('Clearing cache for saveAll:', result[0].className);
+                logger.log('Clearing cache for saveAll:', result[0].className);
                 cache.clear(result[0].className);
             }
             return result;
@@ -191,7 +193,7 @@ function parseCacheInit(options = {}) {
             const className = this.className;
             const result = await originalDestroy.apply(this, args);
             if (result) {
-                console.log('Clearing cache for destroy:', className);
+                logger.log('Clearing cache for destroy:', className);
                 cache.clear(className);
             }
             return result;
@@ -200,7 +202,7 @@ function parseCacheInit(options = {}) {
         ParseInstance.Object.destroyAll = async function (...args) {
             const result = await originalDestroyAll.apply(this, args);
             if (result && result.length > 0) {
-                console.log('Clearing cache for destroyAll:', result[0].className);
+                logger.log('Clearing cache for destroyAll:', result[0].className);
                 cache.clear(result[0].className);
             }
             return result;
@@ -210,5 +212,28 @@ function parseCacheInit(options = {}) {
     return cache;
 }
 
+class CacheLogger {
+    constructor(enabled = false) {
+        this.enabled = enabled;
+    }
+
+    log(message, data) {
+        if (this.enabled) {
+            console.log(`[ParseCache] ${message}`, data ? data : '');
+        }
+    }
+
+    warn(message, error) {
+        if (this.enabled) {
+            console.warn(`[ParseCache] Warning: ${message}`, error ? error : '');
+        }
+    }
+
+    error(message, error) {
+        if (this.enabled) {
+            console.error(`[ParseCache] Error: ${message}`, error ? error : '');
+        }
+    }
+}
 
 module.exports = { parseCacheInit };

@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 const net = require('net');
 const { MongoMemoryServer } = require('mongodb-memory-server');
 
@@ -17,31 +18,21 @@ function getAvailablePort() {
 
 async function createMongoServer() {
     try {
-        // Use real MongoDB in CI
-        if (process.env.CI) {
-            return {
-                getUri: () => process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/test'
-            };
-        }
-
-        // Use MongoDB Memory Server for local development
-        return await MongoMemoryServer.create({
-            binary: {
-                version: '6.0.2',
-                downloadDir: './.mongodb-binaries',
-                skipMD5: true
-            },
-            instance: {
-                storageEngine: 'wiredTiger',
-                ip: '127.0.0.1'
-            }
+        // Test local MongoDB connection
+        const { MongoClient } = require('mongodb');
+        const client = await MongoClient.connect('mongodb://localhost:27017/test', { 
+            serverSelectionTimeoutMS: 1000 
         });
-    } catch (error) {
-        console.warn('MongoDB setup warning:', error.message);
-        // Fallback to local MongoDB with IPv4
+        await client.close();
+        
         return {
-            getUri: () => 'mongodb://127.0.0.1:27017/test'
+            getUri: () => 'mongodb://localhost:27017/test'
         };
+    } catch (error) {
+        console.warn('Local MongoDB connection failed, falling back to MongoDB Memory Server');
+        return await MongoMemoryServer.create({
+            instance: { storageEngine: 'wiredTiger' }
+        });
     }
 }
 

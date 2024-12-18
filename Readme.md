@@ -59,6 +59,7 @@ const customOptions = {
   updateAgeOnGet: true, // determines whether an item's age is updated when it's retrieved using "get"
   updateAgeOnHas: true, // determines whether an item's age is updated when it's checked using "has"
   resetCacheOnSaveAndDestroy: false, // determines whether the cache is reset when an object is saved or destroyed
+  debug: false, // enables detailed logging of cache operations
 };
 const ParseCache = require('parse-cache-memory').parseCacheInit(customOptions);
 ```
@@ -77,6 +78,37 @@ const count = await query.countCache();
 const first = await query.firstCache();
 ...
 ```
+
+## Debug Mode
+
+The cache includes a debug mode that provides detailed logging of all cache operations. Enable it by setting the `debug` option to `true`:
+
+```js
+const cache = parseCacheInit({ debug: true });
+```
+
+When debug mode is enabled, you'll see detailed logs for:
+- Cache hits and misses
+- Cache key generation
+- Cache clearing operations
+- Error conditions
+
+Example debug output:
+```
+[ParseCache] Cache lookup for GameScore { method: 'findCache', cacheKey: 'abc123' }
+[ParseCache] Cache miss for GameScore
+[ParseCache] Cached data for GameScore { size: 10 }
+[ParseCache] Cache stats after findCache { hits: 0, misses: 1, sets: 1, hitRate: 0, cacheSize: 1 }
+[ParseCache] Clearing cache for save: GameScore
+```
+
+This can be particularly useful for:
+- Debugging cache behavior
+- Optimizing cache usage
+- Monitoring cache performance
+- Understanding cache operations in development
+
+> **Note**: Debug mode is disabled by default to avoid unnecessary console output in production. Enable it only when needed for debugging or development purposes.
 
 ## Some backside features
 
