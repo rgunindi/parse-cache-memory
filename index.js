@@ -2,28 +2,26 @@ const Parse = require('parse/node');
 const LRUCache = require('lru-cache');
 const objectHash = require('object-hash');
 
-let options = {}
+let options = {};
 class ParseCache {
     constructor(option = {}) {
         options = {
             max: option.max || 500,
-            maxSize: option.maxSize || 5000,
             ttl: option.ttl || 1000 * 60 * 5,
             allowStale: option.allowStale || false,
             updateAgeOnGet: option.updateAgeOnGet || false,
             updateAgeOnHas: option.updateAgeOnHas || false,
-            sizeCalculation: (value, key) => {
-                return 1
-            },
             resetCacheOnSaveAndDestroy: option.resetCacheOnSaveAndDestroy || false,
             maxClassCaches: option.maxClassCaches || 50,
+            debug: option.debug || false,
         };
+        this.logger = new CacheLogger(options.debug);
         this.cache = new Map();
         this.classCount = 0;
         this.stats = {
             hits: 0,
             misses: 0,
-            sets: 0,
+            sets: 0
         };
     }
 
@@ -31,22 +29,33 @@ class ParseCache {
         try {
             const className = query.className;
             if (!className) {
-                throw new Error('Query must have a className');
+                this.logger.warn('No className provided for query');
+                this.stats.misses++;
+                return null;
             }
 
             if (!this.cache.has(className)) {
+                this.logger.log(`Creating new cache for class: ${className}`);
+                this.stats.misses++;
                 this.cache.set(className, new LRUCache(options));
+                return null;
             }
 
-            const cachedValue = this.cache.get(className)?.get(cacheKey);
+            const classCache = this.cache.get(className);
+            const cachedValue = classCache.get(cacheKey);
+
             if (cachedValue) {
+                this.logger.log(`Cache hit for ${className}`, { cacheKey });
                 this.stats.hits++;
-            } else {
-                this.stats.misses++;
+                return cachedValue;
             }
-            return cachedValue;
+            
+            this.logger.log(`Cache miss for ${className}`, { cacheKey });
+            this.stats.misses++;
+            return null;
         } catch (error) {
-            console.error('Cache get error:', error);
+            this.logger.error('Error getting from cache:', error);
+            this.stats.misses++;
             return null;
         }
     }
@@ -56,18 +65,20 @@ class ParseCache {
             if (this.classCount >= options.maxClassCaches) {
                 const oldestClass = Array.from(this.cache.keys())[0];
                 this.cache.delete(oldestClass);
-            } else {
-                this.classCount++;
+                this.classCount--;
             }
             this.cache.set(className, new LRUCache(options));
+            this.classCount++;
         }
+        const classCache = this.cache.get(className);
+        classCache.set(cacheKey, data);
         this.stats.sets++;
-        this.cache.get(className).set(cacheKey, data);
     }
 
     clear(className) {
         if (this.cache.has(className)) {
             this.cache.delete(className);
+            this.classCount--;
         }
     }
     generateCacheKey(query, ...args) {
@@ -75,15 +86,29 @@ class ParseCache {
             className: query.className,
             query: query.toJSON(),
             args: args,
-        }
+        };
         return objectHash(JSON.stringify(key));
     }
 
     getStats() {
         return {
-            ...this.stats,
-            hitRate: this.stats.hits / (this.stats.hits + this.stats.misses),
-            cacheSize: this.cache.size,
+            hits: this.stats.hits,
+            misses: this.stats.misses,
+            sets: this.stats.sets,
+            hitRate: (this.stats.hits + this.stats.misses) > 0 
+                ? this.stats.hits / (this.stats.hits + this.stats.misses) 
+                : 0,
+            cacheSize: this.cache.size
+        };
+    }
+
+    resetEverything() {
+        this.cache = new Map();
+        this.classCount = 0;
+        this.stats = {
+            hits: 0,
+            misses: 0,
+            sets: 0
         };
     }
 }
@@ -102,207 +127,113 @@ const fNames = {
     reduceCache: "reduce",
     filterCache: "filter",
     subscribeCache: "subscribe"
-}
+};
 
 function parseCacheInit(options = {}) {
     const cache = new ParseCache(options);
+    const logger = new CacheLogger(options.debug);
     const originalSave = Parse.Object.prototype.save;
     const originalSaveAll = Parse.Object.saveAll;
     const originalDestroy = Parse.Object.prototype.destroy;
     const originalDestroyAll = Parse.Object.destroyAll;
-    if (options.resetCacheOnSaveAndDestroy) {
-        global.Parse.Object.destroyAll = async function (...args) {
-            const result = await originalDestroyAll.apply(this, args);
-            if (result) {
-                // Clear cache
-                cache.clear(result[0].className);
-                return result;
-            }
+
+    // Ensure we have Parse globally
+    const ParseInstance = global.Parse || Parse;
+
+    // Add cache methods to Parse.Query.prototype
+    Object.entries(fNames).forEach(([cacheMethod, originalMethod]) => {
+        if (!ParseInstance.Query.prototype[cacheMethod]) {
+            ParseInstance.Query.prototype[cacheMethod] = async function(...args) {
+                const cacheKey = cache.generateCacheKey(this, ...args, originalMethod);
+                logger.log(`Cache lookup for ${this.className}`, { 
+                    method: cacheMethod,
+                    cacheKey 
+                });
+                
+                let cachedData = await cache.get(this, cacheKey);
+                logger.log(`Cache ${cachedData ? 'hit' : 'miss'} for ${this.className}`);
+
+                if (!cachedData) {
+                    cachedData = await this[originalMethod](...args);
+                    if (cachedData) {
+                        cache.set(this.className, cacheKey, cachedData);
+                        logger.log(`Cached data for ${this.className}`, {
+                            size: Array.isArray(cachedData) ? cachedData.length : 1
+                        });
+                    }
+                }
+
+                logger.log(`Cache stats after ${cacheMethod}:`, cache.getStats());
+
+                return cachedData;
+            };
         }
-        global.Parse.Object.prototype.destroy = async function (...args) {
-            const result = await originalDestroy.apply(this, args);
-            // Clear cache
-            cache.clear(this.className);
+    });
+
+    if (options.resetCacheOnSaveAndDestroy) {
+        ParseInstance.Object.prototype.save = async function (...args) {
+            const result = await originalSave.call(this, ...args);
+            if (result) {
+                logger.log('Clearing cache for save:', this.className);
+                cache.clear(this.className);
+            }
             return result;
         };
-        global.Parse.Object.saveAll = async function (...args) {
+
+        ParseInstance.Object.saveAll = async function (...args) {
             const result = await originalSaveAll.apply(this, args);
-            if (result) {
-                // Clear cache
+            if (result && result.length > 0) {
+                logger.log('Clearing cache for saveAll:', result[0].className);
                 cache.clear(result[0].className);
-                return result;
             }
-        }
-        global.Parse.Object.prototype.save = async function (...args) {
-            // const result = await originalSave.apply(this, args);
-            const result = await originalSave.call(this, ...args);
-            // Clear cache
-            cache.clear(this.className);
+            return result;
+        };
+
+        ParseInstance.Object.prototype.destroy = async function (...args) {
+            const className = this.className;
+            const result = await originalDestroy.apply(this, args);
+            if (result) {
+                logger.log('Clearing cache for destroy:', className);
+                cache.clear(className);
+            }
+            return result;
+        };
+
+        ParseInstance.Object.destroyAll = async function (...args) {
+            const result = await originalDestroyAll.apply(this, args);
+            if (result && result.length > 0) {
+                logger.log('Clearing cache for destroyAll:', result[0].className);
+                cache.clear(result[0].className);
+            }
             return result;
         };
     }
 
-    //("get", "find", "findAll", "count", "distinct", "aggregate", "first", "eachBatch", "each", "map", "reduce", "filter", "subscribe")
-    global.Parse.Query.prototype.getCache = async function (objectId, options) {
-        const cacheKey = cache.generateCacheKey(this, objectId, options, fNames.getCache);
-        let cachedData = await cache.get(this, cacheKey);
-
-        if (!cachedData) {
-            cachedData = await this.get(objectId, options);
-            if (cachedData)
-                cache.set(this.className, cacheKey, cachedData);
-        }
-
-        return cachedData;
-    };
-    global.Parse.Query.prototype.findCache = async function (options) {
-        const cacheKey = cache.generateCacheKey(this, options, fNames.findCache);
-        let cachedData = await cache.get(this, cacheKey);
-
-        if (!cachedData) {
-            cachedData = await this.find(options);
-            if (cachedData)
-                cache.set(this.className, cacheKey, cachedData);
-        }
-
-        return cachedData;
-    };
-    global.Parse.Query.prototype.findAllCache = async function (options) {
-        const cacheKey = cache.generateCacheKey(this, options, fNames.findAllCache);
-        let cachedData = await cache.get(this, cacheKey);
-
-        if (!cachedData) {
-            cachedData = await this.findAll(options);
-            if (cachedData) {
-                cache.set(this.className, cacheKey, cachedData);
-            }
-        }
-
-        return cachedData;
-    };
-    global.Parse.Query.prototype.countCache = async function (options) {
-        const cacheKey = cache.generateCacheKey(this, options,fNames.countCache);
-        let cachedData = await cache.get(this,cacheKey);
-
-        if (!cachedData) {
-            cachedData = await this.count(options);
-            if (cachedData)
-                cache.set(this.className, cacheKey, cachedData);
-        }
-
-        return cachedData;
-    };
-    global.Parse.Query.prototype.distinctCache = async function (key, options) {
-        const cacheKey = cache.generateCacheKey(this, key, options, fNames.distinctCache);
-        let cachedData = await cache.get(this,cacheKey);
-
-        if (!cachedData) {
-            cachedData = await this.distinct(key, options);
-            if (cachedData)
-                cache.set(this.className, cacheKey, cachedData);
-        }
-
-        return cachedData;
-    };
-    global.Parse.Query.prototype.aggregateCache = async function (pipeline, options) {
-        const cacheKey = cache.generateCacheKey(this, pipeline, options, fNames.aggregateCache);
-        let cachedData = await cache.get(this,cacheKey);
-
-        if (!cachedData) {
-            cachedData = await this.aggregate(pipeline, options);
-            if (cachedData)
-                cache.set(this.className, cacheKey, cachedData);
-        }
-
-        return cachedData;
-    };
-    global.Parse.Query.prototype.firstCache = async function (options) {
-        const cacheKey = cache.generateCacheKey(this, options, fNames.firstCache);
-        let cachedData = await cache.get(this,cacheKey);
-
-        if (!cachedData) {
-            cachedData = await this.first(options);
-            if (cachedData)
-                cache.set(this.className, cacheKey, cachedData);
-        }
-
-        return cachedData;
-    };
-    global.Parse.Query.prototype.eachBatchCache = async function (callback, options) {
-        const cacheKey = cache.generateCacheKey(this, callback, options, fNames.eachBatchCache);
-        let cachedData = await cache.get(this,cacheKey);
-
-        if (!cachedData) {
-            cachedData = await this.eachBatch(callback, options);
-            if (cachedData)
-                cache.set(this.className, cacheKey, cachedData);
-        }
-
-        return cachedData;
-    };
-    global.Parse.Query.prototype.eachCache = async function (callback, options) {
-        const cacheKey = cache.generateCacheKey(this, callback, options, fNames.eachCache);
-        let cachedData = await cache.get(this, cacheKey);
-
-        if (!cachedData) {
-            cachedData = await this.each(callback, options);
-            if (cachedData)
-                cache.set(this.className, cacheKey, cachedData);
-        }
-
-        return cachedData;
-    };
-    global.Parse.Query.prototype.mapCache = async function (callback, options) {
-        const cacheKey = cache.generateCacheKey(this, callback, options, fNames.mapCache);
-        let cachedData = await cache.get(this,cacheKey);
-
-        if (!cachedData) {
-            cachedData = await this.map(callback, options);
-            if (cachedData)
-                cache.set(this.className, cacheKey, cachedData);
-        }
-
-        return cachedData;
-    };
-    global.Parse.Query.prototype.reduceCache = async function (callback, initialValue, options) {
-        const cacheKey = cache.generateCacheKey(this, callback, initialValue, options, fNames.reduceCache);
-        let cachedData = await cache.get(this, cacheKey);
-
-        if (!cachedData) {
-            cachedData = await this.reduce(callback, initialValue, options);
-            if (cachedData)
-                cache.set(this.className, cacheKey, cachedData);
-        }
-
-        return cachedData;
-    };
-    global.Parse.Query.prototype.filterCache = async function (callback, options) {
-        const cacheKey = cache.generateCacheKey(this, callback, options, fNames.filterCache);
-        let cachedData = await cache.get(this, cacheKey);
-
-        if (!cachedData) {
-            cachedData = await this.filter(callback, options);
-            if (cachedData)
-                cache.set(this.className, cacheKey, cachedData);
-        }
-
-        return cachedData;
-    };
-    global.Parse.Query.prototype.subscribeCache = async function (options) {
-        const cacheKey = cache.generateCacheKey(this, options, fNames.subscribeCache);
-        let cachedData = await cache.get(this, cacheKey);
-
-        if (!cachedData) {
-            cachedData = await this.subscribe(options);
-            if (cachedData)
-                cache.set(this.className, cacheKey, cachedData);
-        }
-
-        return cachedData;
-    };
-
     return cache;
 }
 
+class CacheLogger {
+    constructor(enabled = false) {
+        this.enabled = enabled;
+    }
 
-module.exports = { parseCacheInit }
+    log(message, data) {
+        if (this.enabled) {
+            console.log(`[ParseCache] ${message}`, data ? data : '');
+        }
+    }
+
+    warn(message, error) {
+        if (this.enabled) {
+            console.warn(`[ParseCache] Warning: ${message}`, error ? error : '');
+        }
+    }
+
+    error(message, error) {
+        if (this.enabled) {
+            console.error(`[ParseCache] Error: ${message}`, error ? error : '');
+        }
+    }
+}
+
+module.exports = { parseCacheInit };

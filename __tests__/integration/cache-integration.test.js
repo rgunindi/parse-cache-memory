@@ -3,6 +3,7 @@ const { ParseServer } = require('parse-server');
 const { MongoMemoryServer } = require('mongodb-memory-server');
 const Parse = require('parse/node');
 const express = require('express');
+const { stopParseServer } = require('../helpers/testUtils');
 
 describe('Parse Cache Memory Integration', () => {
     let cache;
@@ -94,25 +95,17 @@ describe('Parse Cache Memory Integration', () => {
         try {
             // Clean up schema
             const schema = new Parse.Schema('TestClass');
-            await schema.delete({ useMasterKey: true });
-        } catch (error) {
-            console.log('Schema cleanup error:', error.message);
-        }
+            await schema.delete({ useMasterKey: true }).catch(() => {});
 
-        // Proper cleanup sequence
-        try {
-            await Promise.all([
-                new Promise(resolve => httpServer?.close(resolve)),
-                parseServer?.handleShutdown?.(),
-                mongod?.stop()
-            ]);
-        } catch (error) {
-            console.error('Cleanup error:', error);
-        }
+            // Close server and cleanup
+            await stopParseServer(httpServer, parseServer);
 
-        // Force close any remaining connections
-        await new Promise(resolve => setTimeout(resolve, 500));
-        process.removeAllListeners();
+            // Force close any remaining connections
+            await new Promise(resolve => setTimeout(resolve, 500));
+            process.removeAllListeners();
+        } catch (error) {
+            console.warn('Cleanup warning:', error.message);
+        }
     });
 
     describe('Complex Query Scenarios', () => {

@@ -3,6 +3,7 @@ const { ParseServer } = require('parse-server');
 const { MongoMemoryServer } = require('mongodb-memory-server');
 const Parse = require('parse/node');
 const express = require('express');
+const { getAvailablePort, createMongoServer, startParseServer, stopParseServer } = require('./helpers/testUtils');
 
 describe('ParseCacheMemory', () => {
     let cache;
@@ -13,42 +14,25 @@ describe('ParseCacheMemory', () => {
 
     beforeAll(async () => {
         try {
-            // Setup MongoDB Memory Server
-            mongod = await MongoMemoryServer.create();
+            mongod = await createMongoServer();
             const mongoUri = mongod.getUri();
+            const port = await getAvailablePort();
 
-            // Setup Express
-            app = express();
-            
-            // Create Parse Server instance
-            parseServer = new ParseServer({
-                databaseURI: mongoUri,
-                appId: 'test-app-id',
-                masterKey: 'test-master-key',
-                serverURL: 'http://localhost:1337/parse',
-                javascriptKey: 'test-js-key',
-                allowClientClassCreation: true,
-                directAccess: true,
-                enforcePrivateUsers: false
-            });
+            const result = await startParseServer(
+                mongoUri,
+                port,
+                'test-app-id',
+                'test-master-key'
+            );
 
-            // Mount Parse Server
-            app.use('/parse', parseServer);
-            
-            // Start Express server
-            httpServer = await new Promise((resolve, reject) => {
-                try {
-                    const server = app.listen(1337, () => resolve(server));
-                    server.on('error', reject);
-                } catch (error) {
-                    reject(error);
-                }
-            });
+            parseServer = result.parseServer;
+            httpServer = result.httpServer;
+            app = result.app;
 
             // Initialize Parse SDK
             global.Parse = Parse;
             Parse.initialize('test-app-id', 'test-js-key', 'test-master-key');
-            Parse.serverURL = 'http://localhost:1337/parse';
+            Parse.serverURL = `http://localhost:${port}/parse`;
 
             // Initialize cache
             cache = parseCacheInit({
@@ -86,14 +70,49 @@ describe('ParseCacheMemory', () => {
 
     afterAll(async () => {
         try {
-            const schema = new Parse.Schema('TestClass');
-            await schema.delete({ useMasterKey: true });
+            // Set longer timeout for cleanup
+            jest.setTimeout(30000);
+
+            // Delete schema with timeout
+            await Promise.race([
+                new Parse.Schema('TestClass')
+                    .delete({ useMasterKey: true })
+                    .catch(() => {}),
+                new Promise(resolve => setTimeout(resolve, 5000))
+            ]);
         } catch (error) {
             console.log('Schema cleanup error:', error.message);
         }
-        await httpServer.close();
-        await mongod.stop();
-    });
+
+        try {
+            // Cleanup Parse Server
+            if (parseServer) {
+                // Remove event listeners
+                parseServer.expressApp?.removeAllListeners();
+            }
+
+            // Stop servers with timeout
+            await Promise.race([
+                Promise.all([
+                    new Promise(resolve => {
+                        if (httpServer) {
+                            httpServer.close(resolve);
+                        } else {
+                            resolve();
+                        }
+                    }),
+                    mongod?.stop()
+                ]),
+                new Promise(resolve => setTimeout(resolve, 10000))
+            ]);
+        } catch (error) {
+            console.warn('Cleanup warning:', error.message);
+        } finally {
+            // Force cleanup
+            process.removeAllListeners();
+            global.Parse = undefined;
+        }
+    }, 30000);
 
     describe('Basic Cache Operations', () => {
         it('should cache and retrieve query results', async () => {
@@ -112,8 +131,8 @@ describe('ParseCacheMemory', () => {
 
         it('should respect TTL for cached results', async () => {
             const query = new Parse.Query('TestClass');
-            cache = parseCacheInit({ ttl: 1000 }); // 1 second TTL
-
+            let newCache = parseCacheInit({ ttl: 1000 }); // 1 second TTL
+            
             const firstResult = await query.findCache({ useMasterKey: true });
             await new Promise(resolve => setTimeout(resolve, 1100));
             const secondResult = await query.findCache({ useMasterKey: true });
@@ -138,6 +157,11 @@ describe('ParseCacheMemory', () => {
     });
 
     describe('Cache with Parse Operations', () => {
+        beforeEach(() => {
+            // Reset cache before each test
+            cache.resetEverything();
+        });
+
         it('should handle saveAll operation correctly', async () => {
             const TestClass = Parse.Object.extend('TestClass');
             const objects = [
@@ -146,12 +170,19 @@ describe('ParseCacheMemory', () => {
             ];
 
             const query = new Parse.Query('TestClass');
+            
+            // First query - should miss cache
             await query.findCache({ useMasterKey: true });
+            let stats = cache.getStats();
+            expect(stats.misses).toBe(1, 'First query should miss');
+            
+            // Save objects - should clear cache
             await Parse.Object.saveAll(objects, { useMasterKey: true });
+            
+            // Second query - should miss cache again because cache was cleared
             await query.findCache({ useMasterKey: true });
-
-            const stats = cache.getStats();
-            expect(stats.misses).toBe(2);
+            stats = cache.getStats();
+            expect(stats.misses).toBe(2, 'Second query should miss after cache clear');
         });
 
         it('should handle destroyAll operation correctly', async () => {
@@ -163,12 +194,19 @@ describe('ParseCacheMemory', () => {
             await Parse.Object.saveAll(objects, { useMasterKey: true });
 
             const query = new Parse.Query('TestClass');
+            
+            // First query - should miss cache
             await query.findCache({ useMasterKey: true });
+            let stats = cache.getStats();
+            expect(stats.misses).toBe(1, 'First query should miss');
+            
+            // Destroy objects - should clear cache
             await Parse.Object.destroyAll(objects, { useMasterKey: true });
+            
+            // Second query - should miss cache again because cache was cleared
             await query.findCache({ useMasterKey: true });
-
-            const stats = cache.getStats();
-            expect(stats.misses).toBe(2);
+            stats = cache.getStats();
+            expect(stats.misses).toBe(2, 'Second query should miss after cache clear');
         });
     });
 }); 

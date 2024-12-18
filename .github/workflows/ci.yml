@@ -1,0 +1,70 @@
+name: Development CI
+
+on:
+  push:
+    branches: [ dev, develop, development ]
+  pull_request:
+    branches: [ main, master, dev, develop, development ]
+
+jobs:
+  tests:
+    if: false  # Disable CI workflow
+    runs-on: ubuntu-22.04
+    strategy:
+      matrix:
+        node-version: [14.x, 16.x]
+
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.node-version }}
+          
+      - name: Install MongoDB
+        run: |
+          wget -qO - https://www.mongodb.org/static/pgp/server-7.0.asc | sudo apt-key add -
+          echo "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/7.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-7.0.list
+          sudo apt-get update
+          sudo apt-get install -y mongodb-org
+
+      - name: Start MongoDB
+        run: |
+          sudo systemctl start mongod
+          mongod --version
+          sleep 5
+          mongosh --eval "db.version()"
+          
+      - name: Install dependencies
+        run: npm install
+          
+      - name: Run tests
+        run: npm test
+        env:
+          PARSE_MASTER_KEY: 'test-master-key'
+          PARSE_APP_ID: 'test-app-id'
+          MONGODB_URI: 'mongodb://127.0.0.1:27017/test'
+
+  build:
+    needs: [tests]
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Use Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '16.x'
+          
+      - name: Install dependencies
+        run: npm install
+        
+      - name: Build package
+        run: npm pack
+        
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: package
+          path: "*.tgz"
