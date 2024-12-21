@@ -1,5 +1,5 @@
 {
-  "name": "parse-cache-memory",
+  "name": "@rgunindi/parse-cache-memory",
   "version": "2.1.0",
   "description": "In-memory cache implementation for Parse Server",
   "main": "index.js",
@@ -54,5 +54,8 @@
   "files": [
     "index.js",
     "scripts/cleanup.js"
-  ]
+  ],
+  "publishConfig": {
+    "@rgunindi:registry": "https://npm.pkg.github.com/"
+  }
 }
