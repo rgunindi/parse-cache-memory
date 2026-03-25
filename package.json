@@ -43,7 +43,7 @@
     "lint-staged": "^13.2.3",
     "prettier": "^3.2.5",
     "express": "^4.22.1",
-    "parse-server": "^9.5.1",
+    "parse-server": "^9.6.0",
     "mongodb-memory-server": "^8.10.0",
     "cross-env": "^7.0.3"
   },
