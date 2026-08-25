@@ -2,10 +2,9 @@ const Parse = require('parse/node');
 const LRUCache = require('lru-cache');
 const objectHash = require('object-hash');
 
-let options = {};
 class ParseCache {
     constructor(option = {}) {
-        options = {
+        this.options = {
             max: option.max || 500,
             ttl: option.ttl || 1000 * 60 * 5,
             allowStale: option.allowStale || false,
@@ -15,7 +14,7 @@ class ParseCache {
             maxClassCaches: option.maxClassCaches || 50,
             debug: option.debug || false,
         };
-        this.logger = new CacheLogger(options.debug);
+        this.logger = new CacheLogger(this.options.debug);
         this.cache = new Map();
         this.classCount = 0;
         this.stats = {
@@ -23,6 +22,19 @@ class ParseCache {
             misses: 0,
             sets: 0
         };
+    }
+
+    _getOrCreateClassCache(className) {
+        if (!this.cache.has(className)) {
+            if (this.classCount >= this.options.maxClassCaches) {
+                const oldestClass = Array.from(this.cache.keys())[0];
+                this.cache.delete(oldestClass);
+                this.classCount--;
+            }
+            this.cache.set(className, new LRUCache(this.options));
+            this.classCount++;
+        }
+        return this.cache.get(className);
     }
 
     async get(query, cacheKey) {
@@ -37,19 +49,19 @@ class ParseCache {
             if (!this.cache.has(className)) {
                 this.logger.log(`Creating new cache for class: ${className}`);
                 this.stats.misses++;
-                this.cache.set(className, new LRUCache(options));
+                this._getOrCreateClassCache(className);
                 return null;
             }
 
             const classCache = this.cache.get(className);
             const cachedValue = classCache.get(cacheKey);
 
-            if (cachedValue) {
+            if (cachedValue !== undefined) {
                 this.logger.log(`Cache hit for ${className}`, { cacheKey });
                 this.stats.hits++;
                 return cachedValue;
             }
-            
+
             this.logger.log(`Cache miss for ${className}`, { cacheKey });
             this.stats.misses++;
             return null;
@@ -61,16 +73,7 @@ class ParseCache {
     }
 
     set(className, cacheKey, data) {
-        if (!this.cache.has(className)) {
-            if (this.classCount >= options.maxClassCaches) {
-                const oldestClass = Array.from(this.cache.keys())[0];
-                this.cache.delete(oldestClass);
-                this.classCount--;
-            }
-            this.cache.set(className, new LRUCache(options));
-            this.classCount++;
-        }
-        const classCache = this.cache.get(className);
+        const classCache = this._getOrCreateClassCache(className);
         classCache.set(cacheKey, data);
         this.stats.sets++;
     }
@@ -183,8 +186,11 @@ function parseCacheInit(options = {}) {
         ParseInstance.Object.saveAll = async function (...args) {
             const result = await originalSaveAll.apply(this, args);
             if (result && result.length > 0) {
-                logger.log('Clearing cache for saveAll:', result[0].className);
-                cache.clear(result[0].className);
+                const classNames = Array.from(new Set(result.map(o => o.className).filter(Boolean)));
+                classNames.forEach(cn => {
+                    logger.log('Clearing cache for saveAll:', cn);
+                    cache.clear(cn);
+                });
             }
             return result;
         };
@@ -202,8 +208,11 @@ function parseCacheInit(options = {}) {
         ParseInstance.Object.destroyAll = async function (...args) {
             const result = await originalDestroyAll.apply(this, args);
             if (result && result.length > 0) {
-                logger.log('Clearing cache for destroyAll:', result[0].className);
-                cache.clear(result[0].className);
+                const classNames = Array.from(new Set(result.map(o => o.className).filter(Boolean)));
+                classNames.forEach(cn => {
+                    logger.log('Clearing cache for destroyAll:', cn);
+                    cache.clear(cn);
+                });
             }
             return result;
         };

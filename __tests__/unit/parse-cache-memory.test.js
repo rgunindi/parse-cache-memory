@@ -83,8 +83,8 @@ describe('Parse Cache Memory Unit Tests', () => {
                 enforcePrivateUsers: false
             });
 
-            // Mount Parse Server
-            app.use('/parse', parseServer);
+            // Mount Parse Server (support different ParseServer return shapes)
+            app.use('/parse', parseServer.app || parseServer);
             
             // Start Express server
             httpServer = await new Promise((resolve, reject) => {
@@ -163,10 +163,25 @@ describe('Parse Cache Memory Unit Tests', () => {
 
         // Proper cleanup sequence
         try {
-            await Promise.all([
-                new Promise(resolve => httpServer?.close(resolve)),
-                parseServer?.handleShutdown?.()
-            ]);
+            const shutdowns = [];
+            if (httpServer && typeof httpServer.close === 'function') {
+                shutdowns.push(new Promise(resolve => httpServer.close(resolve)));
+            }
+            if (parseServer) {
+                if (typeof parseServer.handleShutdown === 'function') {
+                    shutdowns.push(parseServer.handleShutdown());
+                } else if (typeof parseServer.close === 'function') {
+                    // older API
+                    try {
+                        parseServer.close();
+                    } catch (e) {
+                        // ignore
+                    }
+                } else if (parseServer.server && typeof parseServer.server.close === 'function') {
+                    shutdowns.push(new Promise(resolve => parseServer.server.close(resolve)));
+                }
+            }
+            await Promise.all(shutdowns);
         } catch (error) {
             console.error('Cleanup error:', error);
         }
