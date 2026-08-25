@@ -1,16 +1,16 @@
 {
-  "name": "@rgunindi/parse-cache-memory",
-  "version": "2.1.0",
+  "name": "parse-cache-memory",
+  "version": "2.1.1",
   "description": "In-memory cache implementation for Parse Server",
   "main": "index.js",
   "scripts": {
     "pretest:unit": "node scripts/cleanup.js",
     "pretest:integration": "node scripts/cleanup.js",
     "pretest:main": "node scripts/cleanup.js",
-    "test": "cross-env PARSE_MASTER_KEY=test-master-key PARSE_APP_ID=test-app-id jest --testTimeout=60000 --runInBand --forceExit --detectOpenHandles --no-coverage",
-    "test:unit": "cross-env PARSE_MASTER_KEY=test-master-key PARSE_APP_ID=test-app-id jest --testTimeout=60000 --runInBand --forceExit --detectOpenHandles --no-coverage __tests__/unit/parse-cache-memory.test.js",
-    "test:integration": "cross-env PARSE_MASTER_KEY=test-master-key PARSE_APP_ID=test-app-id jest --testTimeout=60000 --runInBand --forceExit --detectOpenHandles __tests__/integration/cache-integration.test.js",
-    "test:main": "cross-env PARSE_MASTER_KEY=test-master-key PARSE_APP_ID=test-app-id jest --testTimeout=60000 --runInBand --forceExit --detectOpenHandles __tests__/parse-cache-memory.test.js",
+    "test": "cross-env NODE_OPTIONS=--experimental-vm-modules PARSE_MASTER_KEY=test-master-key PARSE_APP_ID=test-app-id jest --testTimeout=60000 --runInBand --forceExit --detectOpenHandles --no-coverage",
+    "test:unit": "cross-env NODE_OPTIONS=--experimental-vm-modules PARSE_MASTER_KEY=test-master-key PARSE_APP_ID=test-app-id jest --testTimeout=60000 --runInBand --forceExit --detectOpenHandles --no-coverage __tests__/unit/parse-cache-memory.test.js",
+    "test:integration": "cross-env NODE_OPTIONS=--experimental-vm-modules PARSE_MASTER_KEY=test-master-key PARSE_APP_ID=test-app-id jest --testTimeout=60000 --runInBand --forceExit --detectOpenHandles __tests__/integration/cache-integration.test.js",
+    "test:main": "cross-env NODE_OPTIONS=--experimental-vm-modules PARSE_MASTER_KEY=test-master-key PARSE_APP_ID=test-app-id jest --testTimeout=60000 --runInBand --forceExit --detectOpenHandles __tests__/parse-cache-memory.test.js",
     "test:watch": "jest --watch --testTimeout=60000 --runInBand",
     "test:coverage": "jest --coverage --testTimeout=60000 --runInBand --forceExit",
     "lint": "eslint . --fix",
@@ -54,8 +54,5 @@
   "files": [
     "index.js",
     "scripts/cleanup.js"
-  ],
-  "publishConfig": {
-    "@rgunindi:registry": "https://npm.pkg.github.com/"
-  }
+  ]
 }

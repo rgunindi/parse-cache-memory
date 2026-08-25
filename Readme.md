@@ -38,7 +38,7 @@ npm install parse-cache-memory
 ## Simple Usage
 
 ```js
-require('parse-cache-memory').parseCacheInit();
+require("parse-cache-memory").parseCacheInit();
 const query = new Parse.Query("GameScore");
 query.equalTo("playerName", "Dan Stemkoski");
 const data = await query.findCache();
@@ -61,7 +61,7 @@ const customOptions = {
   resetCacheOnSaveAndDestroy: false, // determines whether the cache is reset when an object is saved or destroyed
   debug: false, // enables detailed logging of cache operations
 };
-const ParseCache = require('parse-cache-memory').parseCacheInit(customOptions);
+const ParseCache = require("parse-cache-memory").parseCacheInit(customOptions);
 ```
 
 > If you want you can use the cache methods manually, but this is not recommended because parse-cache-memory will do it for you automatically.
@@ -88,12 +88,14 @@ const cache = parseCacheInit({ debug: true });
 ```
 
 When debug mode is enabled, you'll see detailed logs for:
+
 - Cache hits and misses
 - Cache key generation
 - Cache clearing operations
 - Error conditions
 
 Example debug output:
+
 ```
 [ParseCache] Cache lookup for GameScore { method: 'findCache', cacheKey: 'abc123' }
 [ParseCache] Cache miss for GameScore
@@ -103,6 +105,7 @@ Example debug output:
 ```
 
 This can be particularly useful for:
+
 - Debugging cache behavior
 - Optimizing cache usage
 - Monitoring cache performance
@@ -131,6 +134,7 @@ parse-cache-memory uses the `lru-cache` library for its caching mechanism. This 
 ## Cache Invalidation
 
 When `resetCacheOnSaveAndDestroy` is enabled, the cache is automatically cleared for a class when:
+
 - An object is saved (`save()`)
 - Multiple objects are saved (`saveAll()`)
 - An object is destroyed (`destroy()`)
@@ -139,22 +143,23 @@ When `resetCacheOnSaveAndDestroy` is enabled, the cache is automatically cleared
 ### Recommendations for Cache Invalidation
 
 Consider enabling cache invalidation (`resetCacheOnSaveAndDestroy: true`) when:
+
 - You have frequently updated collections that require real-time accuracy
 - Your application relies heavily on specific Parse classes that need immediate data consistency
 - You want to ensure that queries always return the most recent data for certain classes
 
 Example of selective cache invalidation:
+
 ```js
 // Initialize cache with automatic invalidation
 const cache = parseCacheInit({
-    resetCacheOnSaveAndDestroy: true
+  resetCacheOnSaveAndDestroy: true,
 });
 
 // For specific classes where you need to manually control cache:
-const query = new Parse.Query('FrequentlyUpdatedClass');
-cache.clear('FrequentlyUpdatedClass'); // Manually clear cache for this class
+const query = new Parse.Query("FrequentlyUpdatedClass");
+cache.clear("FrequentlyUpdatedClass"); // Manually clear cache for this class
 await query.findCache(); // Get fresh data
-
 ```
 
 > **Note**: Enabling cache invalidation can impact performance if you have high-frequency write operations. Consider your application's specific needs and data update patterns when deciding whether to enable this feature.
@@ -181,30 +186,35 @@ console.log(stats);
 ### Using Statistics for Monitoring
 
 You can use these statistics to:
+
 - Monitor cache effectiveness
 - Optimize cache settings
 - Identify potential performance issues
 - Make data-driven decisions about cache configuration
 
 Example of periodic cache monitoring:
+
 ```js
 // Monitor cache performance every 5 minutes
-setInterval(() => {
+setInterval(
+  () => {
     const stats = cache.getStats();
     const hitRatePercentage = (stats.hitRate * 100).toFixed(2);
-    
+
     console.log(`Cache Performance Metrics:
     - Hit Rate: ${hitRatePercentage}%
     - Total Hits: ${stats.hits}
     - Total Misses: ${stats.misses}
     - Cache Size: ${stats.cacheSize}
     `);
-    
+
     // Alert if hit rate is too low
     if (stats.hitRate < 0.5) {
-        console.warn('Warning: Cache hit rate is below 50%');
+      console.warn("Warning: Cache hit rate is below 50%");
     }
-}, 5 * 60 * 1000);
+  },
+  5 * 60 * 1000,
+);
 ```
 
 > **Note**: Statistics are reset when the application restarts. Consider implementing persistent storage for long-term cache performance monitoring.
