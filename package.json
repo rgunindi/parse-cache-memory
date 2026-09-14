@@ -27,7 +27,7 @@
   "dependencies": {
     "lru-cache": "^11.5.2",
     "object-hash": "^3.0.0",
-    "parse": "^5.2.0"
+    "parse": "^8.6.0"
   },
   "repository": {
     "type": "git",
