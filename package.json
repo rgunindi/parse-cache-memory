@@ -44,7 +44,7 @@
     "prettier": "^3.2.5",
     "express": "^5.2.1",
     "parse-server": "^9.7.0",
-    "mongodb-memory-server": "^8.10.0",
+    "mongodb-memory-server": "^11.2.0",
     "cross-env": "^10.1.0"
   },
   "lint-staged": {
